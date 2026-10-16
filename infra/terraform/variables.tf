@@ -52,6 +52,12 @@ variable "github_repository" {
   default     = "AkshatKushwaha-exe/Devops-CRM"
 }
 
+variable "github_oidc_subject_prefix" {
+  description = "Immutable OIDC subject prefix GitHub sends for this repository (repo:<owner>@<owner-id>/<repo>@<repo-id>). Look it up with: gh api repos/<owner>/<repo>/actions/oidc/customization/sub --jq .sub_claim_prefix. Empty to trust only the legacy repo:<owner>/<repo> form."
+  type        = string
+  default     = "repo:AkshatKushwaha-exe@177707032/Devops-CRM@1420946191"
+}
+
 variable "github_environment" {
   description = "GitHub Actions environment the deploy job runs in; only that environment can assume the role."
   type        = string
