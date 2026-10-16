@@ -30,6 +30,8 @@ gh variable set AWS_REGION          --body ap-south-1
 
 Until `AWS_DEPLOY_ROLE_ARN` exists, the deploy job is skipped and CI still publishes images.
 
+**If *Configure AWS credentials* fails with `Not authorized to perform sts:AssumeRoleWithWebIdentity`,** compare the role's trusted `sub` values with what GitHub sends. Repositories with immutable OIDC subjects send `repo:<owner>@<owner-id>/<repo>@<repo-id>:environment:production`; see `gh api repos/<owner>/<repo>/actions/oidc/customization/sub` and set `github_oidc_subject_prefix` in Terraform.
+
 **Seeing a change go live:** the UI footer shows `build <short sha>` from `/api/version`, which reports the `APP_VERSION` baked into the image at build time. Push a change and watch the footer flip to the new SHA once the deploy job finishes.
 
 ## Rollback

@@ -103,11 +103,31 @@ Validated on minikube v1.39 (Kubernetes 1.37, two arm64 nodes, containerd) with 
 
 Screenshots through the Ingress: [desktop overview](evidence/phase-4-kubernetes/desktop-overview.png) · [desktop pipeline](evidence/phase-4-kubernetes/desktop-pipeline.png) · [mobile overview](evidence/phase-4-kubernetes/mobile-overview.png)
 
-## Phase 6 — Continuous deployment (prepared)
+## Phase 5 — AWS infrastructure with Terraform
 
-`deploy.yml` and the `Deploy to EKS` CI job were merged in [#6](https://github.com/AkshatKushwaha-exe/Devops-CRM/pull/6). On `main` (run for `b74afac`) the job is **skipped** because the AWS infrastructure and `AWS_DEPLOY_ROLE_ARN` do not exist yet, while images are still published. The new version endpoint was verified on minikube: after `helm upgrade` to `b74afac`, `/api/version` returned `b74afac1dcbd95aed14df1d1b197b4e7b24bcdad` from every pod once the rolling update finished, and the footer shows `build b74afac`. The live EKS deployment is recorded under Phase 5/6 on AWS below.
+Applied on 16 October 2026 to the capstone account (AWS free account plan, ap-south-1) as the `devops-crm-admin` role, which is reached from a key-only IAM user. The root user was used only once, to create that role.
 
-## Phase 7 — Monitoring and troubleshooting (local cluster)
+| Check | Result |
+|---|---|
+| Account activation | Regional services failed with `OptInRequired`/`SubscriptionRequired` until India customer verification passed. The address check had failed against the college address; after correcting the contact address and re-verifying Aadhaar through DigiLocker, EC2/EKS/S3 activated within minutes |
+| First `terraform apply` | 65 resources: VPC, subnets, NAT, EKS 1.36 control plane (9m48s), KMS, IAM, OIDC, pod-identity roles. The **node group never launched**: `InvalidParameterCombination - The specified instance type is not eligible for Free Tier` (free-plan accounts may only run Free Tier eligible types) |
+| Fix | Interrupted the apply, deleted the stuck node group, and switched to `m7i-flex.large` (largest Free Tier type: 2 vCPU, 8 GiB, x86_64) on AL2023 x86. CI now publishes multi-arch images ([#9](https://github.com/AkshatKushwaha-exe/Devops-CRM/pull/9)) |
+| Second `terraform apply` | 10 resources: node group (Ready in 1m18s, two AZs), coredns, kube-proxy, aws-ebs-csi-driver, metrics-server, AWS Load Balancer Controller (Helm), default gp3 StorageClass, `crm` namespace + deployer RBAC. [terraform-apply.txt](evidence/phase-5-aws/terraform-apply.txt) |
+| Cluster | 2 × `m7i-flex.large` Ready (v1.36.4-eks), all system pods Running, `gp3 (default)` and `alb` IngressClass present. [cluster-state.txt](evidence/phase-5-aws/cluster-state.txt) |
+| Cost controls | Control-plane logging limited to `authenticator` (7-day retention); node group capped at 2 by the 5 vCPU quota; `devops-crm-monthly` budget ($30) emails at 50%/100%/forecast |
+
+## Phase 6 — Continuous deployment to EKS
+
+| Check | Result |
+|---|---|
+| First Deploy run | Failed at OIDC: `Not authorized to perform sts:AssumeRoleWithWebIdentity`. The repository sends GitHub's **immutable** subject `repo:AkshatKushwaha-exe@177707032/Devops-CRM@1420946191:environment:production`; the trust policy now accepts it alongside the legacy form |
+| Initial install (Deploy dispatched for `abfe21f`) | OIDC → namespace-scoped role → `helm upgrade --install` → migration Job → rollout → `helm test` → ALB serving `abfe21f`. Contact *Riya Kapoor* and a ₹1,20,000 Won deal created through the live UI. [before screenshot](evidence/phase-5-aws/chrome-live-overview-before.jpg) · [app-on-eks-before.txt](evidence/phase-5-aws/app-on-eks-before.txt) |
+| **Visible change pushed** | Merging [#10](https://github.com/AkshatKushwaha-exe/Devops-CRM/pull/10) (workspace label shows the environment) triggered CI on `main`: tests → 4 native image builds → 4 Trivy gates → publish → **Deploy to EKS**, all green in 5m33s with no manual step. [pipeline](evidence/phase-6-cd/actions-ci-cd-run-0dc37db.jpg) · [deploy summary](evidence/phase-6-cd/deploy-summary-0dc37db.jpg) · [deploy log](evidence/phase-6-cd/deploy-job-log-0dc37db.txt) |
+| Live result | Header changed from "Local workspace" to **"Production workspace"**; footer `build 0dc37db`; `/api/version` → `{"version":"0dc37db…","environment":"Production"}`; earlier records intact. [after screenshot](evidence/phase-6-cd/chrome-live-overview-after.jpg) |
+| Zero-downtime rollout | Polling `/api/version` and `/` through the ALB every 3 s during the deploy: **98/98 successful**; old and new builds overlapped for ~40 s, then only `0dc37db` answered. [live-rollout-poll.txt](evidence/phase-6-cd/live-rollout-poll.txt) |
+| Rollback procedure exercised | Deploy workflow dispatched with the previous SHA `abfe21f`: revision 3 deployed, `crm-migrate-r3` (older image) reported `Schema is already at head.`, data intact. Then rolled forward to `0dc37db` (revision 4) the same way. [rollback.txt](evidence/phase-6-cd/rollback.txt) |
+
+## Phase 7 — Monitoring and troubleshooting
 
 | Check | Result |
 |---|---|
@@ -120,3 +140,7 @@ Screenshots through the Ingress: [desktop overview](evidence/phase-4-kubernetes/
 | Exercise 3, HPA | 16,096 requests, 100% HTTP 200; `SuccessfulRescale` to 4 and 6 |
 
 **Unplanned incident, also diagnosed:** after Prometheus was added, Grafana showed no data. Its datasource check failed with `lookup kps-prometheus.monitoring: i/o timeout`, and Prometheus restarted repeatedly on liveness timeouts. Pods on `minikube-m02` received `connection refused` from the DNS Service, while direct pod-IP traffic worked. `docker stats` showed the control-plane node container at **2.08/2.15 GiB**: minikube's Docker driver caps each node at about 2 GiB, while Kubernetes sees the host's 8 GiB, so the scheduler overpacked the node (API server 903 Mi). Raising both node containers to 3 GiB (`docker update --memory 3g`) restored DNS, Prometheus readiness, and the Grafana datasource. Grafana's own 256 Mi limit also caused an `OOMKilled` restart, so it was raised to 512 Mi. EKS `t4g.large` nodes report their real 8 GiB, so the scheduler sees the true capacity there.
+
+### On EKS
+
+`scripts/install-monitoring.sh` against the EKS context: 19/19 targets up, including `serviceMonitor/crm/crm-backend`, which reached **6/6** as the HPA scaled under the load test. Grafana showed 143 req/s, 0.00% 5xx, p95 243 ms, HPA 2 → 6, and `PodInitializing` for new API pods waiting on the schema check. [eks-grafana-dashboard-top](evidence/phase-7-monitoring/eks-grafana-dashboard-top.jpg) · [eks-grafana-dashboard-bottom](evidence/phase-7-monitoring/eks-grafana-dashboard-bottom.jpg) · [eks-prometheus-targets](evidence/phase-7-monitoring/eks-prometheus-targets.jpg)

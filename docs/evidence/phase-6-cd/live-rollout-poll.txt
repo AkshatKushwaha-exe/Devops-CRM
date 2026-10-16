@@ -1,0 +1,14 @@
+# GET http://devops-crm-471212951.ap-south-1.elb.amazonaws.com/api/version and / every 3 s during the automatic deployment of 0dc37db
+20:02:20 serving: abfe21f -
+20:06:17 serving: 0dc37db Production
+20:06:20 serving: abfe21f -
+20:06:27 serving: 0dc37db Production
+20:06:30 serving: abfe21f -
+20:06:33 serving: 0dc37db Production
+20:06:43 serving: abfe21f -
+20:06:47 serving: 0dc37db Production
+20:06:50 serving: abfe21f -
+20:06:53 serving: 0dc37db Production
+20:06:56 serving: abfe21f -
+20:07:00 serving: 0dc37db Production
+20:07:42 summary: 98 successful polls, 0 failed (each poll = /api/version + /)
