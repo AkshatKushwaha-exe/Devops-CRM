@@ -4,7 +4,9 @@ A local sales workspace for managing contacts, tracking opportunities, and under
 
 Repository: https://github.com/AkshatKushwaha-exe/Devops-CRM
 
-Presentation video (7½ minutes, captioned): [docs/devops-crm-presentation.mp4](docs/devops-crm-presentation.mp4)
+Presentation video (7½ minutes, captioned): [devops-crm-presentation.mp4](devops-crm-presentation.mp4)
+
+Live on AWS (until teardown after evaluation): http://devops-crm-471212951.ap-south-1.elb.amazonaws.com
 
 ## What works
 
@@ -78,7 +80,39 @@ After publishing, CI calls [`deploy.yml`](.github/workflows/deploy.yml), which d
 - `helm upgrade --install` runs the migration Job and waits for it (`--wait-for-jobs`), then waits for the rolling update and runs `helm test`. A failed upgrade rolls back automatically (`--rollback-on-failure`).
 - The job polls the ALB until `/api/version` returns the deployed SHA, which also appears in the UI footer.
 
-Rollback procedure, database considerations, and setup: [docs/OPERATIONS.md](docs/OPERATIONS.md).
+### Security scan result
+
+Trivy scanned all four images (backend and frontend, amd64 and arm64). It checked their Alpine 3.24 OS packages, the Python and JavaScript dependencies inside them, and the image files for leaked secrets, comparing everything against public vulnerability databases. Every scan reported **0 CRITICAL, 0 HIGH, and 0 secrets**, so the gate passed and the images were published. A clean result means no known serious vulnerability affects these images today; if one is published later, the next pipeline run fails until the base image or dependency is upgraded.
+
+### Rollback
+
+| Situation | Action |
+|---|---|
+| The upgrade fails (pods not ready, migration Job fails, timeout) | Automatic: `--rollback-on-failure` restores the last good revision and the job fails |
+| A release deployed but is bad | Actions → **Deploy** → *Run workflow* with the previous good SHA (same OIDC role and checks) |
+| GitHub unavailable, cluster reachable | `helm -n crm history crm`, then `helm -n crm rollback crm <REVISION> --wait` |
+
+Migrations are forward-only and backward compatible for one release, so an older image runs against a newer schema: `app.migrate` reports the database is ahead and leaves it unchanged. Recorded rollback and roll-forward: [docs/evidence/phase-6-cd/rollback.txt](docs/evidence/phase-6-cd/rollback.txt).
+
+## Provision AWS with Terraform
+
+[`terraform/`](terraform) creates a VPC (2 public + 2 private subnets, one NAT gateway), an EKS 1.36 cluster with a managed node group (2 × `m7i-flex.large`), the EBS CSI driver with a default `gp3` StorageClass, metrics-server, the AWS Load Balancer Controller for Ingress, and the GitHub OIDC deploy role. Prerequisites: Terraform ≥ 1.10, AWS CLI v2, kubectl, Helm 4, and an AWS profile for your own account.
+
+```bash
+cd terraform
+cp terraform.tfvars.example terraform.tfvars    # optional; defaults match the example
+terraform init
+terraform plan -out tfplan
+terraform apply tfplan                           # ~15–20 minutes
+$(terraform output -raw kubeconfig_command)      # aws eks update-kubeconfig …
+gh variable set AWS_DEPLOY_ROLE_ARN --body "$(terraform output -raw github_deploy_role_arn)"
+gh variable set EKS_CLUSTER_NAME    --body "$(terraform output -raw cluster_name)"
+gh variable set AWS_REGION          --body "$(terraform output -raw region)"
+```
+
+The stack costs about $0.38/hour. Tear it down after evaluation: `AWS_PROFILE=<profile> bash scripts/teardown-aws.sh` uninstalls the releases (so the ALB and EBS volume are deleted), runs `terraform destroy`, and records proof in `docs/evidence/phase-8-teardown/`.
+
+PostgreSQL runs in the cluster as a StatefulSet on an EBS volume. For production, Amazon RDS for PostgreSQL (Multi-AZ, automated backups, point-in-time recovery) is the managed alternative: store its connection string as `DATABASE_URL` in a Secret and install with `--set postgresql.enabled=false --set externalDatabase.existingSecret=<secret>`. Migrations and readiness checks work unchanged.
 
 ## Deploy to Kubernetes with Helm
 
@@ -127,7 +161,17 @@ kubectl -n crm apply -f k8s/load-test.yaml && kubectl -n crm get hpa -w        #
 
 `bash scripts/install-monitoring.sh` installs Prometheus and Grafana (kube-prometheus-stack) into the current cluster. The chart's ServiceMonitor scrapes the API's `/metrics`, a PrometheusRule adds four alerts, and Grafana loads the **DevOps CRM · Service overview** dashboard: traffic, latency percentiles, error ratio, CPU and memory per pod, HPA replicas, and waiting containers.
 
-Rehearsed failure drills in an isolated namespace: an invalid image tag, a Service with wrong selectors, and HPA scaling under load. See [docs/OPERATIONS.md](docs/OPERATIONS.md#troubleshooting-exercises).
+### Troubleshooting exercises
+
+Both drills run in their own namespace, `crm-lab`, so the real application is never touched (`kubectl delete namespace crm-lab` cleans up).
+
+**1. Invalid image tag** (`kubectl apply -f k8s/exercises/00-namespace.yaml -f k8s/exercises/01-invalid-image-tag.yaml`): pods stay `ImagePullBackOff`; `kubectl -n crm-lab describe pod -l app=lab-web` shows the tag was not found (a 39-character truncated SHA). Fix: `kubectl -n crm-lab set image deploy/lab-web web=ghcr.io/akshatkushwaha-exe/devops-crm-frontend:<published-sha>`.
+
+**2. Service with wrong selectors** (`kubectl apply -f k8s/exercises/02-wrong-service-selector.yaml`): pods are Running, but requests are refused. `kubectl -n crm-lab get endpointslices -l kubernetes.io/service-name=lab-api-gateway` shows no endpoints; comparing `kubectl -n crm-lab describe svc lab-api-gateway | grep Selector` with `kubectl -n crm-lab get pods --show-labels` shows the mismatch. Fix: `kubectl -n crm-lab patch svc lab-api-gateway --type merge -p '{"spec":{"selector":{"app":"lab-api-gateway","tier":"edge"}}}'`.
+
+**3. HPA scaling:** `kubectl -n crm apply -f k8s/load-test.yaml && kubectl -n crm get hpa crm-backend -w` scales the API from 2 to 6 pods within about a minute, and back down after `kubectl -n crm delete job crm-load-test`.
+
+Recorded runs: [exercise 1](docs/evidence/phase-7-monitoring/exercise-1-invalid-image-tag.txt) · [exercise 2](docs/evidence/phase-7-monitoring/exercise-2-wrong-service-selector.txt) · [HPA](docs/evidence/phase-4-kubernetes/hpa-scaling.txt).
 
 ## Start locally (development)
 
@@ -212,7 +256,22 @@ cd frontend
 node scripts/capture-screenshots.mjs http://127.0.0.1:3000 ../docs/evidence/<name>
 ```
 
-Submission evidence by requirement: [docs/SUBMISSION.md](docs/SUBMISSION.md). Live demo script: [docs/DEMO.md](docs/DEMO.md). See the [validation record](docs/VALIDATION.md) for every check that was executed, including the PostgreSQL runtime verification, restart persistence, and screenshots.
+## Evidence
+
+All under [`docs/evidence/`](docs/evidence). Account IDs are redacted.
+
+| Requirement | Evidence |
+|---|---|
+| Running application | [devops-crm-presentation.mp4](devops-crm-presentation.mp4) · [phase-1-local/](docs/evidence/phase-1-local) desktop and mobile screenshots · [live on EKS](docs/evidence/phase-6-cd/chrome-live-overview-after.jpg) |
+| Tests passing (`pytest -v`) | [tests/backend-pytest.txt](docs/evidence/tests/backend-pytest.txt) (37 passed) · [tests/frontend-tests.txt](docs/evidence/tests/frontend-tests.txt) |
+| Commit history (≥ 10 commits) | [commit-history.txt](docs/evidence/commit-history.txt) (28 commits, excluding merges) |
+| Docker Compose and browser at `localhost:3000` | [phase-2-compose/compose-status.txt](docs/evidence/phase-2-compose/compose-status.txt) · [desktop-overview.png](docs/evidence/phase-2-compose/desktop-overview.png) |
+| Green pipeline and GHCR SHA tags | [Actions run 38931035243](https://github.com/AkshatKushwaha-exe/Devops-CRM/actions/runs/38931035243) · [actions-run-main.jpg](docs/evidence/phase-3-ci/actions-run-main.jpg) · [ghcr-backend-package.jpg](docs/evidence/phase-3-ci/ghcr-backend-package.jpg) |
+| Trivy scan output | [demo-trivy-gates-and-publish.jpg](docs/evidence/phase-6-cd/demo-trivy-gates-and-publish.jpg) · [trivy-backend-summary.jpg](docs/evidence/phase-3-ci/trivy-backend-summary.jpg) · [trivy-backend/trivy.txt](docs/evidence/phase-3-ci/trivy-backend/trivy.txt) · [explanation](#security-scan-result) |
+| Terraform plan and AWS console (VPC, EKS) | [terraform-apply.txt](docs/evidence/phase-5-aws/terraform-apply.txt) · [console-vpc.jpg](docs/evidence/phase-5-aws/console-vpc.jpg) · [console-eks-cluster.jpg](docs/evidence/phase-5-aws/console-eks-cluster.jpg) · `terraform destroy`: `phase-8-teardown/` after evaluation |
+| Pods, Services, `helm list`, app through Ingress | [kubectl-helm-status.txt](docs/evidence/phase-6-cd/kubectl-helm-status.txt) · [cluster-state.txt](docs/evidence/phase-5-aws/cluster-state.txt) · [chrome-live-overview-after.jpg](docs/evidence/phase-6-cd/chrome-live-overview-after.jpg) |
+| `/metrics`, Prometheus targets UP, Grafana | [metrics-endpoint.txt](docs/evidence/phase-7-monitoring/metrics-endpoint.txt) · [eks-prometheus-targets.jpg](docs/evidence/phase-7-monitoring/eks-prometheus-targets.jpg) · [eks-grafana-dashboard-top.jpg](docs/evidence/phase-7-monitoring/eks-grafana-dashboard-top.jpg) |
+| Live demo: commit → pipeline → deployment | [PR #14](https://github.com/AkshatKushwaha-exe/Devops-CRM/pull/14) (accent green → indigo) · [demo-deploy-summary.jpg](docs/evidence/phase-6-cd/demo-deploy-summary.jpg) · [live-rollout-poll.txt](docs/evidence/phase-6-cd/live-rollout-poll.txt) (no failed requests during the rollout) |
 
 ## Data rules
 
@@ -244,5 +303,6 @@ frontend/src/            React screens, components, styling, component tests
 frontend/e2e/            Browser workflows
 frontend/scripts/        Evidence screenshot capture
 scripts/                 Local launch and database helper, browser-test server
-docs/                    Architecture, operations (CD, rollback, troubleshooting), validation, evidence, presentation video
+docs/evidence/           Screenshots and terminal output for each requirement
+devops-crm-presentation.mp4  Presentation video
 ```

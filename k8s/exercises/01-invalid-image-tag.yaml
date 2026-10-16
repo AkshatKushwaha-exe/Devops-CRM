@@ -1,6 +1,6 @@
 # Exercise 1: a deployment whose image tag does not exist (a truncated commit SHA).
 # Symptoms: pods never become Ready (ErrImagePull → ImagePullBackOff), rollout never completes.
-# Diagnose and fix: docs/OPERATIONS.md#exercise-1-invalid-image-tag
+# Diagnose and fix: README.md#troubleshooting-exercises
 apiVersion: apps/v1
 kind: Deployment
 metadata:

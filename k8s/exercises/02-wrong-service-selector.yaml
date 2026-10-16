@@ -1,7 +1,7 @@
 # Exercise 2: healthy pods behind a Service whose selector matches nothing.
 # Symptoms: pods are Running/Ready, but requests to the Service time out or are refused,
 # and the Service has no endpoints.
-# Diagnose and fix: docs/OPERATIONS.md#exercise-2-service-with-incorrect-selectors
+# Diagnose and fix: README.md#troubleshooting-exercises
 apiVersion: apps/v1
 kind: Deployment
 metadata:
