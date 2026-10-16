@@ -41,7 +41,7 @@ module "vpc" {
 }
 
 ################################################################################
-# EKS control plane, managed Graviton node group, and add-ons
+# EKS control plane, managed node group, and add-ons
 ################################################################################
 
 module "ebs_csi_pod_identity" {
@@ -105,7 +105,7 @@ module "eks" {
 
   eks_managed_node_groups = {
     default = {
-      ami_type       = "AL2023_ARM_64_STANDARD"
+      ami_type       = var.node_ami_type
       instance_types = var.node_instance_types
       capacity_type  = "ON_DEMAND"
 

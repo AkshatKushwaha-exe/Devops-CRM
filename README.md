@@ -59,11 +59,11 @@ Copy `.env.example` to `.env` to change the database password or host port, or t
 Backend lint + tests ─┐ (Ruff, Pytest, migrations up/down + drift check on PostgreSQL 18)
 Browser tests ────────┤ (Playwright against the real API)
 Helm + Terraform ─────┤ (helm lint --strict, kubeconform, terraform fmt/validate)
-Frontend lint + tests → Frontend build ─┴→ Build images (arm64) → Trivy gate → Publish to GHCR → Deploy to EKS
+Frontend lint + tests → Frontend build ─┴→ Build images (amd64+arm64) → Trivy gate → Publish to GHCR → Deploy to EKS
                                                                  (main only)       (main only)
 ```
 
-- **Images** are built once on native arm64 runners, exported as tarballs, scanned, and then exactly those tarballs are pushed. Nothing is rebuilt after the scan.
+- **Images** are built once per architecture on native amd64 and arm64 runners, exported as tarballs, and scanned. Exactly those tarballs are pushed as `:<sha>-amd64` and `:<sha>-arm64`, then joined under one multi-arch `:<sha>` tag. Nothing is rebuilt after the scan.
 - **Security gate:** Trivy (official image pinned by digest) scans OS packages, language dependencies, and secrets. Any HIGH or CRITICAL finding, fixed or unfixed, fails the job. Reports are uploaded as artifacts and to GitHub code scanning.
 - **Tags:** `ghcr.io/akshatkushwaha-exe/devops-crm-{backend,frontend}:<full commit SHA>`, with OCI `revision`/`source` labels and a signed build-provenance attestation. Verify with `gh attestation verify oci://<image> --owner AkshatKushwaha-exe`.
 - All third-party actions are pinned to commit SHAs.
@@ -111,7 +111,7 @@ kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 8088:80
 # → http://localhost:8088 (the Ingress routes /api and /)
 ```
 
-Images are linux/arm64 to match Apple-silicon minikube and AWS Graviton. On an x86 machine, build locally and run `minikube image load` instead.
+Images are multi-arch (linux/amd64 + linux/arm64), so the same `:<sha>` tag runs on Apple-silicon minikube, x86 EKS nodes, and Graviton.
 
 Exercises used for validation:
 
