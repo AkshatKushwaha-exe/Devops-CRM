@@ -121,11 +121,13 @@ export function slideHtml(name) {
   return `<!doctype html><html><head><meta charset="utf-8"></head><body>${pages[name]}</body></html>`;
 }
 
-// Capture format: "$ command" lines are typed, "# note" lines are dim comments, the rest is output.
+// Capture format: "$ command" lines are typed, "# note" lines are dim comments, "@@ N" waits for
+// narration sentence N to start, and everything else is output.
 export function terminalHtml(text, chapter) {
   const blocks = [];
   for (const line of text.replace(/\r/g, "").split("\n")) {
-    if (line.startsWith("$ ")) blocks.push({ cmd: line.slice(2), out: [] });
+    if (/^@@ \d+$/.test(line)) blocks.push({ cmd: null, out: [], sync: Number(line.slice(3)) });
+    else if (line.startsWith("$ ")) blocks.push({ cmd: line.slice(2), out: [] });
     else if (blocks.length) blocks[blocks.length - 1].out.push(line);
     else blocks.push({ cmd: null, out: [line] });
   }
@@ -159,15 +161,28 @@ const color = (l) => {
 let html = "";
 const render = (extra = "") => { el.innerHTML = html + extra + '<span class="cur"></span>'; el.scrollTop = el.scrollHeight; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-window.play = async (totalMs) => {
-  // Schedule against an absolute deadline: timer overhead never pushes output past the scene.
-  const deadline = performance.now() + totalMs;
+window.play = async (totalMs, starts = []) => {
+  // Split the script at "@@ N" markers; each segment ends when the next marked sentence starts
+  // (the last at totalMs), and is paced against that absolute deadline.
+  const t0 = performance.now();
+  const segments = [[]];
+  for (const b of blocks) (b.sync !== undefined ? segments.push(Object.assign([], { sync: b.sync })) : segments[segments.length - 1].push(b));
+  for (let s = 0; s < segments.length; s++) {
+    const seg = segments[s];
+    if (seg.sync !== undefined) { const wait = t0 + starts[seg.sync] * 1000 - performance.now(); if (wait > 0) await sleep(wait); }
+    const next = segments[s + 1];
+    const end = next ? t0 + starts[next.sync] * 1000 - 250 : t0 + totalMs;
+    await playSegment(seg, end);
+  }
+  render();
+};
+async function playSegment(segBlocks, deadline) {
   const left = () => Math.max(0, deadline - performance.now());
-  const chars = blocks.reduce((n, b) => n + (b.cmd ? b.cmd.length : 0), 0);
-  let lines = blocks.reduce((n, b) => n + b.out.length, 0);
+  const chars = segBlocks.reduce((n, b) => n + (b.cmd ? b.cmd.length : 0), 0);
+  let lines = segBlocks.reduce((n, b) => n + b.out.length, 0);
   // Commands get at most 45% of the time, between 12 and 30 ms per character.
-  const typeMs = Math.max(12, Math.min(30, (totalMs * 0.45) / Math.max(chars, 1)));
-  for (const b of blocks) {
+  const typeMs = Math.max(12, Math.min(30, (left() * 0.45) / Math.max(chars, 1)));
+  for (const b of segBlocks) {
     if (b.cmd) {
       let typed = "";
       const step = Math.max(1, Math.round(16 / typeMs)); // type several characters per frame when fast
@@ -186,8 +201,7 @@ window.play = async (totalMs) => {
     }
     html += "\\n";
   }
-  render();
-};
+}
 render();
 </script></body></html>`;
 }

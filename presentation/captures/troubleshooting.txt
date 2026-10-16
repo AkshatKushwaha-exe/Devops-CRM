@@ -1,0 +1,59 @@
+# Exercise 1: a deployment with a mistyped image tag
+$ kubectl apply -f k8s/exercises/00-namespace.yaml -f k8s/exercises/01-invalid-image-tag.yaml
+namespace/crm-lab created
+deployment.apps/lab-web created
+
+@@ 1
+$ kubectl -n crm-lab get pods
+NAME                       READY   STATUS             RESTARTS   AGE
+lab-web-545b987b78-5n8z4   0/1     ImagePullBackOff   0          25s
+lab-web-545b987b78-xs2bp   0/1     ImagePullBackOff   0          25s
+
+$ kubectl -n crm-lab describe pod/lab-web-545b987b78-5n8z4 | grep -A4 Events
+ Warning Failed 24s kubelet spec.containers{web}: Error: ImagePullBackOff
+ Warning  Failed  kubelet  Failed to pull image "…/devops-crm-frontend:0dc37db…642c": … not found
+
+$ kubectl -n crm-lab set image deploy/lab-web web=ghcr.io/akshatkushwaha-exe/devops-crm-frontend:cb2225f38533…
+deployment.apps/lab-web image updated
+
+$ kubectl -n crm-lab rollout status deploy/lab-web
+Waiting for deployment "lab-web" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "lab-web" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "lab-web" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "lab-web" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "lab-web" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "lab-web" rollout to finish: 1 old replicas are pending termination...
+deployment "lab-web" successfully rolled out
+
+@@ 2
+# Exercise 2: a Service whose selector matches no pods
+$ kubectl apply -f k8s/exercises/02-wrong-service-selector.yaml
+deployment.apps/lab-api-gateway created
+service/lab-api-gateway created
+
+$ kubectl -n crm-lab run probe --rm -i --image=busybox:1.37 -- wget -qO- -T 3 http://lab-api-gateway/healthz
+wget: can't connect to remote host (172.20.225.80): Connection refused
+
+$ kubectl -n crm-lab get endpointslices -l kubernetes.io/service-name=lab-api-gateway
+NAME                    ADDRESSTYPE   PORTS     ENDPOINTS   AGE
+lab-api-gateway-k4sfm   IPv4          <unset>   <unset>     11s
+
+@@ 3
+$ kubectl -n crm-lab describe svc lab-api-gateway | grep Selector
+Selector:                 app=api-gateway,tier=frontend
+
+$ kubectl -n crm-lab get pods -l app=lab-api-gateway --show-labels
+NAME STATUS LABELS
+lab-api-gateway-5c77c4df4-482tq Running app=lab-api-gateway,tier=edge
+lab-api-gateway-5c77c4df4-v5n69 Running app=lab-api-gateway,tier=edge
+
+$ kubectl -n crm-lab patch svc lab-api-gateway -p '{"spec":{"selector":{"app":"lab-api-gateway","tier":"edge"}}}'
+service/lab-api-gateway patched
+
+$ kubectl -n crm-lab get endpointslices -l kubernetes.io/service-name=lab-api-gateway
+NAME                    ADDRESSTYPE   PORTS   ENDPOINTS                   AGE
+lab-api-gateway-k4sfm   IPv4          8080    10.20.20.224,10.20.32.121   16s
+
+$ kubectl delete namespace crm-lab
+namespace "crm-lab" deleted
+

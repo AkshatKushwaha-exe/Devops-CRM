@@ -1,0 +1,31 @@
+$ kubectl -n crm apply -f k8s/load-test.yaml
+job.batch/crm-load-test created
+
+@@ 1
+$ kubectl -n crm get hpa crm-backend --watch
+21:30:24  crm-backend  Deployment/crm-backend   cpu: 4%/60%    min=2 max=6 replicas=2
+21:30:56  crm-backend  Deployment/crm-backend   cpu: 129%/60%  min=2 max=6 replicas=2
+21:31:07  crm-backend  Deployment/crm-backend   cpu: 309%/60%  min=2 max=6 replicas=4
+21:31:28  crm-backend  Deployment/crm-backend   cpu: 438%/60%  min=2 max=6 replicas=4
+21:31:39  crm-backend  Deployment/crm-backend   cpu: 395%/60%  min=2 max=6 replicas=6
+21:31:49  crm-backend  Deployment/crm-backend   cpu: 370%/60%  min=2 max=6 replicas=6
+21:32:10  crm-backend  Deployment/crm-backend   cpu: 382%/60%  min=2 max=6 replicas=6
+21:32:21  crm-backend  Deployment/crm-backend   cpu: 363%/60%  min=2 max=6 replicas=6
+21:32:42  crm-backend  Deployment/crm-backend   cpu: 349%/60%  min=2 max=6 replicas=6
+21:32:53  crm-backend  Deployment/crm-backend   cpu: 240%/60%  min=2 max=6 replicas=6
+21:33:15  crm-backend  Deployment/crm-backend   cpu: 4%/60%    min=2 max=6 replicas=6
+
+@@ 2
+$ kubectl -n crm top pods -l app.kubernetes.io/component=backend
+NAME                           CPU(cores)   MEMORY(bytes)   
+crm-backend-75878899cc-22f7w   5m           65Mi            
+crm-backend-75878899cc-49j86   4m           64Mi            
+crm-backend-75878899cc-4v5nh   4m           65Mi            
+crm-backend-75878899cc-q8hbr   4m           66Mi            
+crm-backend-75878899cc-vc4qk   4m           66Mi            
+
+$ kubectl -n crm describe hpa crm-backend | grep SuccessfulRescale
+ Normal SuccessfulRescale 4m17s (x2 over 95m) horizontal-pod-autoscaler New size: 4; reason: cpu resource utilization (percentage of request) above target
+ Normal SuccessfulRescale 3m47s (x2 over 94m) horizontal-pod-autoscaler New size: 6; reason: cpu resource utilization (percentage of request) above target
+ Normal SuccessfulRescale 16s (x2 over 91m) horizontal-pod-autoscaler New size: 5; reason: All metrics below target
+

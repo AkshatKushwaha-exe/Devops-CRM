@@ -124,7 +124,10 @@ async function record(browser, scene, grafana) {
   }
   await page.waitForTimeout(400);
   start = Date.now();
-  if (scene.kind === "terminal") await page.evaluate((ms) => window.play(ms), timing.total * 1000 - 1500);
+  if (scene.kind === "terminal") {
+    const starts = timing.sentences.map((s) => s.start);
+    await page.evaluate(([ms, st]) => { window.play(ms, st); }, [timing.total * 1000 - 1500, starts]);
+  }
 
   const at = async (i) => {
     const wait = timing.sentences[i].start * 1000 - (Date.now() - start);
