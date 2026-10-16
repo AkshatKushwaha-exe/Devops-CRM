@@ -1,0 +1,124 @@
+# Deploy one published, scanned image SHA to EKS with Helm.
+# - Called by CI after "Publish to GHCR" on main (continuous deployment).
+# - Run manually with an older SHA to roll back (or forward); see README "Rollback".
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      image-tag:
+        description: Full commit SHA of the images to deploy
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      image-tag:
+        description: Full commit SHA of images already published to GHCR (e.g. a previous main commit)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write # GitHub OIDC → short-lived AWS credentials
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false # never interrupt a rollout halfway
+
+env:
+  RELEASE: crm
+  NAMESPACE: crm
+  IMAGE_TAG: ${{ inputs.image-tag }}
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.image-tag }} to EKS
+    runs-on: ubuntu-24.04
+    environment:
+      name: production
+      url: ${{ steps.verify.outputs.url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check that both images exist for this SHA
+        run: |
+          [[ "$IMAGE_TAG" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::image-tag must be a full 40-character commit SHA"; exit 1; }
+          for component in backend frontend; do
+            docker manifest inspect "ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/devops-crm-$component:$IMAGE_TAG" >/dev/null \
+              || { echo "::error::$component image for $IMAGE_TAG is not published"; exit 1; }
+          done
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: gha-deploy-${{ github.run_id }}
+
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v4.3.0
+
+      - name: Connect to the cluster
+        run: |
+          aws sts get-caller-identity --query Arn --output text
+          aws eks update-kubeconfig --name "${{ vars.EKS_CLUSTER_NAME }}" --region "${{ vars.AWS_REGION }}"
+          kubectl -n "$NAMESPACE" get deploy,statefulset 2>/dev/null || true
+          echo "PREVIOUS_REVISION=$(helm -n "$NAMESPACE" history "$RELEASE" --max 1 -o json 2>/dev/null | jq -r '.[0].revision // 0' || echo 0)" >> "$GITHUB_ENV"
+
+      - name: Helm upgrade (migration Job, then rolling update)
+        run: |
+          # --wait-for-jobs: the release only succeeds once crm-migrate-r<N> completes.
+          # --rollback-on-failure: a failed rollout is reverted to the last good revision.
+          helm upgrade --install "$RELEASE" charts/devops-crm \
+            --namespace "$NAMESPACE" \
+            -f charts/devops-crm/values-eks.yaml \
+            --set imageTag="$IMAGE_TAG" \
+            --wait=watcher --wait-for-jobs --rollback-on-failure --timeout 10m \
+            --history-max 10
+          echo "REVISION=$(helm -n "$NAMESPACE" history "$RELEASE" --max 1 -o json | jq -r '.[0].revision')" >> "$GITHUB_ENV"
+
+      - name: Database migrations
+        run: |
+          job="$RELEASE-migrate-r$REVISION"
+          kubectl -n "$NAMESPACE" wait --for=condition=complete "job/$job" --timeout=5m
+          kubectl -n "$NAMESPACE" logs "job/$job"
+
+      - name: Wait for rollout completion
+        run: |
+          kubectl -n "$NAMESPACE" rollout status "deploy/$RELEASE-backend" --timeout=5m
+          kubectl -n "$NAMESPACE" rollout status "deploy/$RELEASE-frontend" --timeout=5m
+          kubectl -n "$NAMESPACE" get pods -o wide
+          helm test "$RELEASE" -n "$NAMESPACE" --logs
+
+      - name: Readiness through the load balancer
+        id: verify
+        run: |
+          for _ in $(seq 1 60); do
+            host=$(kubectl -n "$NAMESPACE" get ingress "$RELEASE" -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+            [ -n "$host" ] && break
+            sleep 5
+          done
+          [ -n "$host" ] || { echo "::error::Ingress has no load balancer address"; exit 1; }
+          url="http://$host"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          # A new ALB needs a few minutes for DNS and target registration.
+          for _ in $(seq 1 60); do
+            served=$(curl -fsS --max-time 5 "$url/api/version" | jq -r .version 2>/dev/null || true)
+            if [ "$served" = "$IMAGE_TAG" ] && curl -fsS --max-time 5 -o /dev/null "$url/" \
+               && curl -fsS --max-time 5 -o /dev/null "$url/api/dashboard"; then
+              echo "Serving $served at $url"
+              break
+            fi
+            echo "Waiting for $url to serve $IMAGE_TAG (currently: ${served:-unreachable})"
+            sleep 10
+          done
+          [ "$served" = "$IMAGE_TAG" ] || { echo "::error::$url is not serving $IMAGE_TAG"; exit 1; }
+          {
+            echo "### Deployed to EKS"
+            echo "| | |"
+            echo "|---|---|"
+            echo "| URL | $url |"
+            echo "| Image tag | \`$IMAGE_TAG\` |"
+            echo "| Helm revision | $PREVIOUS_REVISION → $REVISION |"
+            echo "| Rollback | \`helm rollback $RELEASE $PREVIOUS_REVISION -n $NAMESPACE --wait\` or run **Deploy** with the previous SHA |"
+          } >> "$GITHUB_STEP_SUMMARY"

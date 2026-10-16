@@ -65,6 +65,8 @@ resource "kubernetes_namespace_v1" "app" {
     name = var.app_namespace
     labels = {
       "app.kubernetes.io/part-of" = "devops-crm"
+      # Pods become Ready only once their ALB target is healthy: no gaps during rollouts.
+      "elbv2.k8s.aws/pod-readiness-gate-inject" = "enabled"
     }
   }
 

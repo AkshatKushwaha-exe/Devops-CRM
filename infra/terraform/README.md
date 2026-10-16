@@ -37,12 +37,12 @@ $(terraform output -raw kubeconfig_command)     # aws eks update-kubeconfig …
 kubectl get nodes -o wide
 ```
 
-Then connect CD (see the repository README, "Continuous deployment"):
+Then connect CD (see [OPERATIONS.md](../../docs/OPERATIONS.md)). These are repository variables, not secrets: the role can only be assumed by this repository's `production` environment through OIDC.
 
 ```bash
-gh variable set AWS_DEPLOY_ROLE_ARN --env production --body "$(terraform output -raw github_deploy_role_arn)"
-gh variable set EKS_CLUSTER_NAME    --env production --body "$(terraform output -raw cluster_name)"
-gh variable set AWS_REGION          --env production --body "$(terraform output -raw region)"
+gh variable set AWS_DEPLOY_ROLE_ARN --body "$(terraform output -raw github_deploy_role_arn)"
+gh variable set EKS_CLUSTER_NAME    --body "$(terraform output -raw cluster_name)"
+gh variable set AWS_REGION          --body "$(terraform output -raw region)"
 ```
 
 If your account already has the `token.actions.githubusercontent.com` OIDC provider, set `create_github_oidc_provider = false`.

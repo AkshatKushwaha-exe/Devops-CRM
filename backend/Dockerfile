@@ -19,7 +19,8 @@ LABEL org.opencontainers.image.title="devops-crm-backend" \
       org.opencontainers.image.version="${VERSION}"
 ENV PATH="/opt/venv/bin:${PATH}" \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    APP_VERSION="${VERSION}"
 # Remove pip from the runtime image: the app runs from /opt/venv and never installs packages.
 RUN addgroup -S -g 10001 crm \
     && adduser -S -D -H -u 10001 -G crm -s /sbin/nologin crm \

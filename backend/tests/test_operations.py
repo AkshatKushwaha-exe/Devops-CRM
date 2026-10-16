@@ -71,3 +71,10 @@ def test_api_docs_are_served_under_the_api_prefix(client):
     assert client.get("/api/openapi.json").json()["info"]["title"] == "DevOps CRM"
     assert client.get("/api/docs").status_code == 200
     assert client.get("/docs").status_code == 404
+
+
+def test_version_reports_the_build(client, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "app_version", "014afef")
+    assert client.get("/api/version").json() == {"version": "014afef"}

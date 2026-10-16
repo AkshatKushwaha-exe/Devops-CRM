@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db import get_db
 from app.routes import contacts, dashboard, deals
 
@@ -65,6 +66,12 @@ def ready(db: Session = Depends(get_db)):
     db.execute(text("SELECT id FROM deals LIMIT 1"))
     db.execute(text("SELECT id FROM activities LIMIT 1"))
     return {"status": "ready"}
+
+
+@app.get("/api/version", tags=["Operations"])
+def version():
+    """The build running in this pod: lets a deployment be verified end to end."""
+    return {"version": settings.app_version}
 
 
 @app.get("/metrics", include_in_schema=False)

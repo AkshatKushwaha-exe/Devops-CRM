@@ -58,14 +58,25 @@ Copy `.env.example` to `.env` to change the database password or host port, or t
 ```text
 Backend lint + tests ─┐ (Ruff, Pytest, migrations up/down + drift check on PostgreSQL 18)
 Browser tests ────────┤ (Playwright against the real API)
-Frontend lint + tests → Frontend build ─┴→ Build images (arm64) → Trivy gate → Publish to GHCR
-                                                                 (main only)
+Helm + Terraform ─────┤ (helm lint --strict, kubeconform, terraform fmt/validate)
+Frontend lint + tests → Frontend build ─┴→ Build images (arm64) → Trivy gate → Publish to GHCR → Deploy to EKS
+                                                                 (main only)       (main only)
 ```
 
 - **Images** are built once on native arm64 runners, exported as tarballs, scanned, and then exactly those tarballs are pushed. Nothing is rebuilt after the scan.
 - **Security gate:** Trivy (official image pinned by digest) scans OS packages, language dependencies, and secrets. Any HIGH or CRITICAL finding, fixed or unfixed, fails the job. Reports are uploaded as artifacts and to GitHub code scanning.
 - **Tags:** `ghcr.io/akshatkushwaha-exe/devops-crm-{backend,frontend}:<full commit SHA>`, with OCI `revision`/`source` labels and a signed build-provenance attestation. Verify with `gh attestation verify oci://<image> --owner AkshatKushwaha-exe`.
 - All third-party actions are pinned to commit SHAs.
+
+## Continuous deployment
+
+After publishing, CI calls [`deploy.yml`](.github/workflows/deploy.yml), which deploys **that exact SHA** to EKS:
+
+- GitHub OIDC gives the job short-lived AWS credentials. There are no stored keys, and only the `production` environment of this repository can assume the role.
+- `helm upgrade --install` runs the migration Job and waits for it (`--wait-for-jobs`), then waits for the rolling update and runs `helm test`. A failed upgrade rolls back automatically (`--rollback-on-failure`).
+- The job polls the ALB until `/api/version` returns the deployed SHA, which also appears in the UI footer.
+
+Rollback procedure, database considerations, and setup: [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
 ## Deploy to Kubernetes with Helm
 
@@ -217,11 +228,12 @@ frontend/Dockerfile      UI image (Vite build → unprivileged Nginx)
 frontend/nginx/          Nginx site template: static UI, /api proxy, /healthz
 compose.yaml             PostgreSQL, migration step, API, and UI
 .github/workflows/       CI: tests → build → scan → publish
-charts/devops-crm/       Helm chart (values-local.yaml for minikube)
+charts/devops-crm/       Helm chart (values-local.yaml for minikube, values-eks.yaml for AWS)
+infra/terraform/         VPC, EKS, node group, controllers, GitHub OIDC deploy role
 k8s/                     Load test and troubleshooting exercises
 frontend/src/            React screens, components, styling, component tests
 frontend/e2e/            Browser workflows
 frontend/scripts/        Evidence screenshot capture
 scripts/                 Local launch and database helper, browser-test server
-docs/                    Architecture, API map, validation record, evidence screenshots
+docs/                    Architecture, operations (CD, rollback, troubleshooting), validation, evidence
 ```
