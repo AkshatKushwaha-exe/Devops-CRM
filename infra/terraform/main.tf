@@ -41,7 +41,7 @@ module "vpc" {
 }
 
 ################################################################################
-# EKS control plane, managed Graviton node group, and add-ons
+# EKS control plane, managed node group, and add-ons
 ################################################################################
 
 module "ebs_csi_pod_identity" {
@@ -64,6 +64,11 @@ module "eks" {
 
   endpoint_public_access       = true
   endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
+
+  # Audit/API control-plane logs are verbose and billed per GB ingested; keep the cheap
+  # authenticator log (who signed in) for a week. Enable "audit" for real environments.
+  enabled_log_types                      = ["authenticator"]
+  cloudwatch_log_group_retention_in_days = 7
 
   # Access entries (no aws-auth ConfigMap). Whoever runs `terraform apply` is cluster admin.
   authentication_mode                      = "API"
@@ -100,7 +105,7 @@ module "eks" {
 
   eks_managed_node_groups = {
     default = {
-      ami_type       = "AL2023_ARM_64_STANDARD"
+      ami_type       = var.node_ami_type
       instance_types = var.node_instance_types
       capacity_type  = "ON_DEMAND"
 

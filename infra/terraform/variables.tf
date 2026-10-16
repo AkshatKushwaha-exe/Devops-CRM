@@ -23,13 +23,19 @@ variable "vpc_cidr" {
 }
 
 variable "node_instance_types" {
-  description = "Graviton (arm64) instance types for the managed node group, matching the arm64 images."
+  description = "Instance types for the managed node group. AWS free-plan accounts may only launch Free Tier eligible types; m7i-flex.large (2 vCPU, 8 GiB) is the largest of those. CI publishes amd64 and arm64 images, so Graviton types work on paid accounts."
   type        = list(string)
-  default     = ["t4g.large"]
+  default     = ["m7i-flex.large"]
+}
+
+variable "node_ami_type" {
+  description = "EKS AMI type matching the instance architecture (AL2023_x86_64_STANDARD or AL2023_ARM_64_STANDARD)."
+  type        = string
+  default     = "AL2023_x86_64_STANDARD"
 }
 
 variable "node_count" {
-  description = "Desired/minimum/maximum worker nodes. New accounts get a 5 vCPU on-demand quota, so the default stops at 2 × t4g.large (4 vCPU); raise max after a quota increase."
+  description = "Desired/minimum/maximum worker nodes. New accounts get a 5 vCPU on-demand quota, so the default stops at 2 nodes × 2 vCPU; raise max after a quota increase."
   type        = object({ desired = number, min = number, max = number })
   default     = { desired = 2, min = 2, max = 2 }
 }

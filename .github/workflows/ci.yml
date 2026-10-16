@@ -192,25 +192,27 @@ jobs:
       - run: terraform validate
 
   image:
-    name: Image · build ${{ matrix.component }}
+    name: Image · build ${{ matrix.component }} (${{ matrix.arch }})
     needs: [backend, e2e, frontend-build, chart, terraform]
-    # Native arm64 runner: images run on Apple-silicon minikube and AWS Graviton nodes.
-    runs-on: ubuntu-24.04-arm
+    # Each architecture builds natively (no QEMU): amd64 for EKS free-tier x86 nodes,
+    # arm64 for Apple-silicon minikube and Graviton.
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     strategy:
       fail-fast: false
       matrix:
         component: [backend, frontend]
+        arch: [amd64, arm64]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Image name
         run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/devops-crm-${{ matrix.component }}" >> "$GITHUB_ENV"
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - name: Build ${{ env.IMAGE }}:${{ github.sha }}
+      - name: Build ${{ env.IMAGE }}:${{ github.sha }}-${{ matrix.arch }}
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ${{ matrix.component }}
-          platforms: linux/arm64
-          tags: ${{ env.IMAGE }}:${{ github.sha }}
+          platforms: linux/${{ matrix.arch }}
+          tags: ${{ env.IMAGE }}:${{ github.sha }}-${{ matrix.arch }}
           build-args: VERSION=${{ github.sha }}
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
@@ -218,19 +220,19 @@ jobs:
           # The scanned tarball is exactly what gets pushed; nothing is rebuilt after the scan.
           outputs: type=docker,dest=${{ runner.temp }}/image.tar
           provenance: false
-          cache-from: type=gha,scope=${{ matrix.component }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+          cache-from: type=gha,scope=${{ matrix.component }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}-${{ matrix.arch }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: image-${{ matrix.component }}
+          name: image-${{ matrix.component }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/image.tar
           retention-days: 3
           compression-level: 1
 
   scan:
-    name: Trivy · ${{ matrix.component }}
+    name: Trivy · ${{ matrix.component }} (${{ matrix.arch }})
     needs: image
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       security-events: write
@@ -238,16 +240,17 @@ jobs:
       fail-fast: false
       matrix:
         component: [backend, frontend]
+        arch: [amd64, arm64]
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: image-${{ matrix.component }}
+          name: image-${{ matrix.component }}-${{ matrix.arch }}
           path: image
       - name: Restore vulnerability database cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/trivy-cache
-          key: trivy-db-${{ runner.arch }}-${{ github.run_id }}
+          key: trivy-db-${{ runner.arch }}-${{ github.run_id }}-${{ matrix.component }}-${{ matrix.arch }}
           restore-keys: trivy-db-${{ runner.arch }}-
       - name: Scan for HIGH and CRITICAL vulnerabilities and secrets
         run: |
@@ -271,24 +274,24 @@ jobs:
           secrets=$(jq '[.Results[]?.Secrets[]?] | length' reports/trivy.json)
           os=$(jq -r '.Metadata.OS | "\(.Family) \(.Name)"' reports/trivy.json)
           {
-            echo "### Trivy · ${{ matrix.component }}"
+            echo "### Trivy · ${{ matrix.component }} (${{ matrix.arch }})"
             echo "| Image OS | CRITICAL | HIGH | Secrets | Gate |"
             echo "|---|---|---|---|---|"
             echo "| $os | $critical | $high | $secrets | $([ $((vulns + secrets)) -eq 0 ] && echo '✅ pass' || echo '❌ fail') |"
           } >> "$GITHUB_STEP_SUMMARY"
           if [ $((vulns + secrets)) -gt 0 ]; then
-            echo "::error::${{ matrix.component }} image has $critical CRITICAL, $high HIGH, $secrets secret finding(s)"
+            echo "::error::${{ matrix.component }} (${{ matrix.arch }}) image has $critical CRITICAL, $high HIGH, $secrets secret finding(s)"
             exit 1
           fi
       - uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         if: always() && hashFiles('reports/trivy.sarif') != ''
         with:
           sarif_file: reports/trivy.sarif
-          category: trivy-${{ matrix.component }}
+          category: trivy-${{ matrix.component }}-${{ matrix.arch }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: trivy-${{ matrix.component }}
+          name: trivy-${{ matrix.component }}-${{ matrix.arch }}
           path: reports/
           retention-days: 30
 
@@ -296,7 +299,7 @@ jobs:
     name: Publish to GHCR
     needs: scan
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
@@ -309,30 +312,36 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: image-*
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Push the scanned images
+      - name: Push the scanned images and a multi-arch tag
         id: push
         run: |
           {
             echo "### Published images"
-            echo "| Component | Image | Digest |"
-            echo "|---|---|---|"
+            echo "| Component | Multi-arch image | Index digest | Per-arch tags |"
+            echo "|---|---|---|---|"
           } >> "$GITHUB_STEP_SUMMARY"
           for component in backend frontend; do
-            image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/devops-crm-$component:$GITHUB_SHA"
-            docker load --input "image-$component/image.tar"
-            docker push "$image"
-            digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$image" | cut -d@ -f2)
+            repo="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/devops-crm-$component"
+            for arch in amd64 arm64; do
+              docker load --input "image-$component-$arch/image.tar"
+              docker push "$repo:$GITHUB_SHA-$arch"
+            done
+            # One tag per commit that resolves to the right architecture on any node.
+            docker buildx imagetools create --tag "$repo:$GITHUB_SHA" \
+              "$repo:$GITHUB_SHA-amd64" "$repo:$GITHUB_SHA-arm64"
+            digest=$(docker buildx imagetools inspect "$repo:$GITHUB_SHA" --format '{{json .Manifest}}' | jq -r .digest)
             {
-              echo "$component=$image"
-              echo "${component}_name=${image%:*}"
+              echo "$component=$repo:$GITHUB_SHA"
+              echo "${component}_name=$repo"
               echo "${component}_digest=$digest"
             } >> "$GITHUB_OUTPUT"
-            echo "| $component | \`$image\` | \`$digest\` |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| $component | \`$repo:$GITHUB_SHA\` | \`$digest\` | \`-amd64\`, \`-arm64\` |" >> "$GITHUB_STEP_SUMMARY"
           done
       - name: Attest backend provenance
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2

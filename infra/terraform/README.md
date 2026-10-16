@@ -6,7 +6,7 @@ Provisions everything the CRM needs on AWS in **ap-south-1**:
 |---|---|
 | Network | VPC `10.20.0.0/16` across 2 AZs; public subnets (`/24`, tagged for internet-facing ALBs) and private subnets (`/20`, nodes); internet gateway; one NAT gateway |
 | Cluster | EKS 1.36 with the API authentication mode (access entries); public endpoint (CIDR-restrictable); KMS-encrypted secrets |
-| Compute | Managed node group: 2 × `t4g.large` (Graviton, arm64, AL2023) in private subnets; encrypted 30 GiB gp3 root volumes. Capped at 2 nodes because new accounts have a 5 vCPU on-demand quota |
+| Compute | Managed node group: 2 × `m7i-flex.large` (2 vCPU, 8 GiB, x86_64, AL2023) in private subnets; encrypted 30 GiB gp3 root volumes. Capped at 2 nodes because new accounts have a 5 vCPU on-demand quota |
 | Add-ons | `vpc-cni`, `kube-proxy`, `coredns`, `eks-pod-identity-agent`, `metrics-server` (HPA), `aws-ebs-csi-driver` (Pod Identity) |
 | Ingress | AWS Load Balancer Controller (Helm, Pod Identity) → the chart's `alb` Ingress becomes an internet-facing ALB with IP targets |
 | Storage | Default `gp3` StorageClass (encrypted EBS, `WaitForFirstConsumer`, expandable) for the PostgreSQL volume |
@@ -49,12 +49,12 @@ If your account already has the `token.actions.githubusercontent.com` OIDC provi
 
 ## Cost
 
-Approximate on-demand prices in ap-south-1 while the stack exists (about $0.33/hour, $8/day):
+Approximate on-demand prices in ap-south-1 while the stack exists (about $0.38/hour, $9/day):
 
 | Item | ≈ USD/hour |
 |---|---|
 | EKS control plane | 0.10 |
-| 2 × t4g.large | 0.13 |
+| 2 × m7i-flex.large | 0.17 |
 | NAT gateway (+ data) | 0.06 |
 | ALB (created by the app's Ingress) | 0.025 + LCUs |
 | Public IPv4 addresses, EBS volumes | ~0.02 |
@@ -79,7 +79,7 @@ terraform destroy
 
 ## Design notes
 
-- **Graviton nodes** match the arm64 images CI builds on native ARM runners, and cost about 25% less than t3.large.
+- **Free Tier eligible nodes:** AWS *free account plan* accounts can only launch Free Tier eligible instance types. The first apply with `t4g.large` failed with `The specified instance type is not eligible for Free Tier`. `m7i-flex.large` is the largest eligible type; the arm64 options top out at 2 GiB. CI publishes multi-arch (amd64 + arm64) images, so on a paid account set `node_instance_types = ["t4g.large"]` and `node_ami_type = "AL2023_ARM_64_STANDARD"`.
 - **Pod Identity** instead of IRSA for the EBS CSI driver and the load balancer controller: no OIDC trust policy to manage per service account.
 - **Least privilege for CD:** IAM grants only `eks:DescribeCluster`; Kubernetes permissions are namespace-scoped through the access entry.
 - **Accepted scanner finding:** `trivy config` flags the EKS module's node security group rule that allows egress to `0.0.0.0/0` (AWS-0104). Nodes need outbound HTTPS through the NAT gateway to pull images from GHCR and reach AWS APIs. Restricting this would require VPC endpoints plus an ECR mirror, which is out of scope here.
