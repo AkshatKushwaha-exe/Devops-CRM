@@ -2,6 +2,8 @@
 # storage-provisioner-rancher addons. Install with:
 #   helm upgrade --install crm charts/devops-crm -n crm --create-namespace \
 #     -f charts/devops-crm/values-local.yaml --set imageTag=<commit-sha>
+environment: Minikube
+
 ingress:
   className: nginx
 postgresql:

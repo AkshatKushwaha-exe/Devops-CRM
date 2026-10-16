@@ -71,7 +71,7 @@ def ready(db: Session = Depends(get_db)):
 @app.get("/api/version", tags=["Operations"])
 def version():
     """The build running in this pod: lets a deployment be verified end to end."""
-    return {"version": settings.app_version}
+    return {"version": settings.app_version, "environment": settings.app_environment}
 
 
 @app.get("/metrics", include_in_schema=False)
