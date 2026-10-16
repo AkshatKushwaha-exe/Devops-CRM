@@ -51,6 +51,22 @@ Copy `.env.example` to `.env` to change the database password or host port, or t
 
 **Migrations.** `app.migrate upgrade` takes a PostgreSQL advisory lock, so concurrent runs are safe: one applies the migration, the others wait and find the schema at head. If the database is *ahead* of the image, for example after rolling back to an older image, the schema is left unchanged. Schema changes must therefore stay backward compatible for one release (expand, then contract). `app.migrate wait` blocks until the schema is ready.
 
+## Continuous integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every pull request to `main` and every push to `main`:
+
+```text
+Backend lint + tests ─┐ (Ruff, Pytest, migrations up/down + drift check on PostgreSQL 18)
+Browser tests ────────┤ (Playwright against the real API)
+Frontend lint + tests → Frontend build ─┴→ Build images (arm64) → Trivy gate → Publish to GHCR
+                                                                 (main only)
+```
+
+- **Images** are built once on native arm64 runners, exported as tarballs, scanned, and then exactly those tarballs are pushed. Nothing is rebuilt after the scan.
+- **Security gate:** Trivy (official image pinned by digest) scans OS packages, language dependencies, and secrets. Any HIGH or CRITICAL finding, fixed or unfixed, fails the job. Reports are uploaded as artifacts and to GitHub code scanning.
+- **Tags:** `ghcr.io/akshatkushwaha-exe/devops-crm-{backend,frontend}:<full commit SHA>`, with OCI `revision`/`source` labels and a signed build-provenance attestation. Verify with `gh attestation verify oci://<image> --owner AkshatKushwaha-exe`.
+- All third-party actions are pinned to commit SHAs.
+
 ## Start locally (development)
 
 Prerequisites: Node.js 22.12+ (Node 24 recommended), pnpm 10, uv, and Python 3.12. `uv` can install Python 3.12 automatically. Dependency downloads need internet access on the first run.
@@ -157,6 +173,7 @@ backend/Dockerfile       API image (Alpine, non-root)
 frontend/Dockerfile      UI image (Vite build → unprivileged Nginx)
 frontend/nginx/          Nginx site template: static UI, /api proxy, /healthz
 compose.yaml             PostgreSQL, migration step, API, and UI
+.github/workflows/       CI: tests → build → scan → publish
 frontend/src/            React screens, components, styling, component tests
 frontend/e2e/            Browser workflows
 frontend/scripts/        Evidence screenshot capture

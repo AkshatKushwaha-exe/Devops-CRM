@@ -1,0 +1,310 @@
+# Tests and lint → frontend build → build both images → Trivy gate → publish to GHCR.
+# Pull requests run everything except publishing. Pushes to main publish images tagged with
+# the full commit SHA, so every deployed image traces back to a tested, scanned commit.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Trivy runs from its official image pinned by digest (not a mutable action tag).
+  TRIVY_IMAGE: aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa
+  UV_VERSION: 0.11.28
+  PNPM_VERSION: 10.33.4
+  NODE_VERSION: 24
+
+jobs:
+  backend:
+    name: Backend · lint and test
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:18.6-alpine3.24
+        env:
+          POSTGRES_DB: crm
+          POSTGRES_USER: crm
+          POSTGRES_PASSWORD: ci_only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U crm -d crm"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --frozen --python 3.12
+      - name: Ruff lint
+        run: uv run ruff check app alembic tests
+      - name: Ruff format
+        run: uv run ruff format --check app alembic tests
+      - name: Pytest
+        run: uv run pytest --junitxml=pytest-report.xml
+      - name: Migrations on real PostgreSQL (upgrade, drift check, downgrade, re-upgrade)
+        env:
+          DATABASE_URL: postgresql+psycopg://crm:ci_only@127.0.0.1:5432/crm
+        run: |
+          uv run python -m app.migrate upgrade --timeout 60
+          uv run alembic check
+          uv run alembic downgrade base
+          uv run python -m app.migrate upgrade --timeout 60
+          uv run python -m app.migrate wait --timeout 10
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: pytest-report
+          path: backend/pytest-report.xml
+          retention-days: 14
+
+  frontend:
+    name: Frontend · lint and test
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Prettier
+        run: pnpm format:check
+      - name: Vitest
+        run: pnpm test
+
+  e2e:
+    name: Browser tests (Playwright)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: uv sync --frozen --python 3.12
+        working-directory: backend
+      - run: pnpm install --frozen-lockfile
+        working-directory: frontend
+      - run: pnpm exec playwright install --with-deps chromium
+        working-directory: frontend
+      - run: pnpm test:e2e
+        working-directory: frontend
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/test-results/
+          retention-days: 7
+
+  frontend-build:
+    name: Frontend · production build
+    needs: frontend
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Type check and Vite build
+        run: pnpm build
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 7
+
+  image:
+    name: Image · build ${{ matrix.component }}
+    needs: [backend, e2e, frontend-build]
+    # Native arm64 runner: images run on Apple-silicon minikube and AWS Graviton nodes.
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [backend, frontend]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Image name
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/devops-crm-${{ matrix.component }}" >> "$GITHUB_ENV"
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build ${{ env.IMAGE }}:${{ github.sha }}
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.component }}
+          platforms: linux/arm64
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
+          build-args: VERSION=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          # The scanned tarball is exactly what gets pushed; nothing is rebuilt after the scan.
+          outputs: type=docker,dest=${{ runner.temp }}/image.tar
+          provenance: false
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: image-${{ matrix.component }}
+          path: ${{ runner.temp }}/image.tar
+          retention-days: 3
+          compression-level: 1
+
+  scan:
+    name: Trivy · ${{ matrix.component }}
+    needs: image
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [backend, frontend]
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: image-${{ matrix.component }}
+          path: image
+      - name: Restore vulnerability database cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/trivy-cache
+          key: trivy-db-${{ runner.arch }}-${{ github.run_id }}
+          restore-keys: trivy-db-${{ runner.arch }}-
+      - name: Scan for HIGH and CRITICAL vulnerabilities and secrets
+        run: |
+          mkdir -p reports "$RUNNER_TEMP/trivy-cache"
+          trivy() {
+            docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+              -v "$PWD:/work" -v "$RUNNER_TEMP/trivy-cache:/cache" -w /work \
+              "$TRIVY_IMAGE" --cache-dir /cache "$@"
+          }
+          # Unfixed findings count too: the gate fails on any HIGH or CRITICAL issue.
+          trivy image --input image/image.tar --scanners vuln,secret \
+            --severity HIGH,CRITICAL --format json --output reports/trivy.json
+          trivy convert --scanners vuln,secret --format table --output reports/trivy.txt reports/trivy.json
+          trivy convert --format sarif --output reports/trivy.sarif reports/trivy.json
+          cat reports/trivy.txt
+      - name: Security gate
+        run: |
+          vulns=$(jq '[.Results[]?.Vulnerabilities[]?] | length' reports/trivy.json)
+          high=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length' reports/trivy.json)
+          critical=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' reports/trivy.json)
+          secrets=$(jq '[.Results[]?.Secrets[]?] | length' reports/trivy.json)
+          os=$(jq -r '.Metadata.OS | "\(.Family) \(.Name)"' reports/trivy.json)
+          {
+            echo "### Trivy · ${{ matrix.component }}"
+            echo "| Image OS | CRITICAL | HIGH | Secrets | Gate |"
+            echo "|---|---|---|---|---|"
+            echo "| $os | $critical | $high | $secrets | $([ $((vulns + secrets)) -eq 0 ] && echo '✅ pass' || echo '❌ fail') |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ $((vulns + secrets)) -gt 0 ]; then
+            echo "::error::${{ matrix.component }} image has $critical CRITICAL, $high HIGH, $secrets secret finding(s)"
+            exit 1
+          fi
+      - uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+        if: always() && hashFiles('reports/trivy.sarif') != ''
+        with:
+          sarif_file: reports/trivy.sarif
+          category: trivy-${{ matrix.component }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: trivy-${{ matrix.component }}
+          path: reports/
+          retention-days: 30
+
+  publish:
+    name: Publish to GHCR
+    needs: scan
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    outputs:
+      backend: ${{ steps.push.outputs.backend }}
+      frontend: ${{ steps.push.outputs.frontend }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: image-*
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push the scanned images
+        id: push
+        run: |
+          {
+            echo "### Published images"
+            echo "| Component | Image | Digest |"
+            echo "|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          for component in backend frontend; do
+            image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/devops-crm-$component:$GITHUB_SHA"
+            docker load --input "image-$component/image.tar"
+            docker push "$image"
+            digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$image" | cut -d@ -f2)
+            {
+              echo "$component=$image"
+              echo "${component}_name=${image%:*}"
+              echo "${component}_digest=$digest"
+            } >> "$GITHUB_OUTPUT"
+            echo "| $component | \`$image\` | \`$digest\` |" >> "$GITHUB_STEP_SUMMARY"
+          done
+      - name: Attest backend provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ steps.push.outputs.backend_name }}
+          subject-digest: ${{ steps.push.outputs.backend_digest }}
+          push-to-registry: true
+      - name: Attest frontend provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ steps.push.outputs.frontend_name }}
+          subject-digest: ${{ steps.push.outputs.frontend_digest }}
+          push-to-registry: true
