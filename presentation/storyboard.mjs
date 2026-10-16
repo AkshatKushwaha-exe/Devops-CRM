@@ -20,6 +20,24 @@ async function typeInto(page, locator, text) {
   await locator.pressSequentially(text, { delay: 45 });
 }
 
+// GitHub run pages lazy-load job summaries behind "Load summary" buttons.
+async function expandSummaries(page) {
+  const buttons = page.getByRole("button", { name: "Load summary" });
+  for (let i = 0; i < 20 && (await buttons.count()) > 0; i++) {
+    await buttons.first().click({ timeout: 2000 }).catch(() => {});
+    await page.waitForTimeout(250);
+  }
+}
+
+async function scrollToHeading(page, name) {
+  await page
+    .getByRole("heading", { name })
+    .first()
+    .evaluate((el) => el.scrollIntoView({ behavior: "smooth", block: "start" }))
+    .catch(() => {});
+  await page.waitForTimeout(700);
+}
+
 // Chapter labels shown in the top-left corner, matching the rubric's demo order.
 export const chapters = {
   "s01-title": "DevOps CRM",
@@ -197,31 +215,14 @@ export const scenes = [
   },
   {
     id: "s11-trivy",
-    kind: "browser",
-    url: "RUN_URL",
+    kind: "slide",
+    slide: "trivy",
     narration: [
-      "Next, both images are built natively for amd64 and arm64, and Trivy scans every one of them for vulnerabilities and leaked secrets.",
+      "Next, both images are built natively for amd64 and arm64, and Trivy scans every one of them.",
+      "It checks the Alpine OS packages and every Python and JavaScript dependency against known CVE databases, and looks for leaked secrets.",
       "The gate fails on any high or critical finding, fixed or not.",
-      "All four scans are clean: Alpine base images with no known high or critical CVEs.",
+      "All four scans are clean. No component has a known high or critical vulnerability today, and if one is published tomorrow, the next build fails until the image or dependency is upgraded.",
     ],
-    async run({ page, at }) {
-      await page.waitForTimeout(1200);
-      await at(1);
-      for (const name of ["Trivy · backend (amd64)", "Trivy · frontend (amd64)"]) {
-        const heading = page.getByRole("heading", { name: `${name} summary` });
-        await heading.scrollIntoViewIfNeeded().catch(() => {});
-        const load = page
-          .locator("section, div")
-          .filter({ has: heading })
-          .getByRole("button", { name: "Load summary" });
-        await load.first().click({ timeout: 3000 }).catch(() => {});
-      }
-      await at(2);
-      await page
-        .getByRole("heading", { name: "Trivy · backend (amd64) summary" })
-        .scrollIntoViewIfNeeded()
-        .catch(() => {});
-    },
   },
   {
     id: "s12-ghcr",
@@ -255,26 +256,13 @@ export const scenes = [
   },
   {
     id: "s14-deploy",
-    kind: "browser",
-    url: "RUN_URL",
+    kind: "slide",
+    slide: "deploy",
     narration: [
       "The last job deploys.",
+      "Its AWS role can only be assumed by this repository's production environment, and inside the cluster it can only touch the crm namespace.",
       "It assumes that role, runs helm upgrade with the exact image SHA, waits for the database migration job and the rolling update, runs helm test, and finally checks through the load balancer that the new version is serving.",
     ],
-    async run({ page, at }) {
-      await page.waitForTimeout(800);
-      const heading = page.getByRole("heading", { name: /Deploy to EKS .* summary/ });
-      await heading.scrollIntoViewIfNeeded().catch(() => {});
-      await page
-        .locator("section, div")
-        .filter({ has: heading })
-        .getByRole("button", { name: "Load summary" })
-        .first()
-        .click({ timeout: 3000 })
-        .catch(() => {});
-      await page.waitForTimeout(1500);
-      await heading.scrollIntoViewIfNeeded().catch(() => {});
-    },
   },
   {
     id: "s15-kubernetes",
@@ -293,6 +281,7 @@ export const scenes = [
     narration: [
       "And here's the result: the live application now shows the indigo accent, and the footer shows the new build.",
       "Pods were replaced one at a time, so users saw no downtime.",
+      "And if a release goes wrong, the same Deploy workflow rolls back to any previous build. I tested that too.",
     ],
     async run({ page, at }) {
       await page.waitForTimeout(1000);
@@ -316,13 +305,16 @@ export const scenes = [
     url: "http://localhost:9091/targets?search=crm",
     narration: [
       "The backend exposes Prometheus metrics at /metrics, and a ServiceMonitor tells Prometheus to scrape every API pod. All targets are up.",
+      "Four alert rules watch the error rate, latency, missing API pods, and pods stuck pulling images.",
       "Grafana turns that into a live dashboard: request rate, latency percentiles, error rate, CPU and memory per pod, and replica count.",
     ],
     async run({ page, at, grafana }) {
       await page.waitForTimeout(1200);
       await at(1);
+      await page.goto("http://localhost:9091/alerts?search=crm", { timeout: 8000 }).catch(() => {});
+      await at(2);
       await grafana(page);
-      await page.waitForTimeout(4500);
+      await page.waitForTimeout(3500);
       await slow(page, 900, 18, 120);
     },
   },

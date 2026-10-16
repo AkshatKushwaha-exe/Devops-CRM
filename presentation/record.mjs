@@ -112,7 +112,8 @@ async function record(browser, scene, grafana) {
     await page.setContent(html, { waitUntil: "load" });
     await mountCaptions();
   };
-  if (scene.kind === "slide") await show(slideHtml(scene.slide));
+  // Panning slides scroll for most of the narration.
+  if (scene.kind === "slide") await show(slideHtml(scene.slide, { seconds: Math.max(4, timing.total - 4) }));
   else if (scene.kind === "terminal") {
     const capture = readFileSync(`${ROOT}captures/${scene.capture}.txt`, "utf8");
     await show(terminalHtml(capture, chapters[scene.id]));
@@ -137,7 +138,8 @@ async function record(browser, scene, grafana) {
     page,
     at,
     slide: (name) => show(slideHtml(name)),
-    grafana: (p) => p.goto(GRAFANA_DASHBOARD, { waitUntil: "networkidle" }).catch(() => {}),
+    // Grafana keeps polling, so networkidle can stall; "load" plus a short settle is enough.
+    grafana: (p) => p.goto(GRAFANA_DASHBOARD, { timeout: 10000 }).catch(() => {}),
   };
   if (scene.run) await scene.run(helpers);
   const remaining = timing.total * 1000 - (Date.now() - start);

@@ -115,8 +115,29 @@ const console_ = () => `
   ${shot("phase-5-aws/console-subnets.jpg", "2 public + 2 private subnets · 2 AZs")}
 </div>`;
 
-export function slideHtml(name) {
-  const pages = { title, architecture, summary, console: console_() };
+// GitHub job summaries are only visible when signed in, so these scenes pan across
+// screenshots of the live-demo run taken in the signed-in browser.
+const pan = (file, caption, seconds) => `
+<style>${base}
+  body{background:#0d1117}
+  .frame{position:absolute;left:150px;right:150px;top:84px;bottom:150px;overflow:hidden;border-radius:14px;
+    border:1px solid #30363d;box-shadow:0 18px 50px rgba(0,0,0,.5);background:#0d1117}
+  .frame img{width:100%;display:block;animation:pan ${seconds}s ease-in-out 1.2s forwards}
+  @keyframes pan{to{transform:translateY(calc(-100% + 846px))}}
+  .src{position:absolute;left:150px;top:28px;color:#8b949e;font:600 20px "Avenir Next",system-ui}
+</style>
+<div class="src">${caption}</div>
+<div class="frame"><img src="${img(file)}"></div>`;
+
+export function slideHtml(name, opts = {}) {
+  const pages = {
+    title,
+    architecture,
+    summary,
+    console: console_(),
+    trivy: pan("phase-6-cd/demo-trivy-gates-and-publish.jpg", "GitHub Actions · run 38931035243 · commit 104715a", opts.seconds ?? 18),
+    deploy: pan("phase-6-cd/demo-deploy-summary.jpg", "GitHub Actions · run 38931035243 · Deploy to EKS", opts.seconds ?? 6),
+  };
   if (!pages[name]) throw new Error(`unknown slide ${name}`);
   return `<!doctype html><html><head><meta charset="utf-8"></head><body>${pages[name]}</body></html>`;
 }
