@@ -1,7 +1,7 @@
 # minikube (docker driver, arm64) with the ingress, metrics-server, and
 # storage-provisioner-rancher addons. Install with:
-#   helm upgrade --install crm charts/devops-crm -n crm --create-namespace \
-#     -f charts/devops-crm/values-local.yaml --set imageTag=<commit-sha>
+#   helm upgrade --install crm helm/devops-crm -n crm --create-namespace \
+#     -f helm/devops-crm/values-local.yaml --set imageTag=<commit-sha>
 environment: Minikube
 
 ingress:

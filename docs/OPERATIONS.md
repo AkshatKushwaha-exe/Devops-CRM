@@ -20,11 +20,11 @@ publish (ghcr.io/…:<sha>) → Deploy to EKS
 
 The job runs in the `production` GitHub environment, which records each deployment with its URL. Deploys are serialized (`concurrency: deploy-production`) and never cancelled midway.
 
-**One-time setup** after `terraform apply` (see [infra/terraform/README.md](../infra/terraform/README.md)):
+**One-time setup** after `terraform apply` (see [terraform/README.md](../terraform/README.md)):
 
 ```bash
-gh variable set AWS_DEPLOY_ROLE_ARN --body "$(terraform -chdir=infra/terraform output -raw github_deploy_role_arn)"
-gh variable set EKS_CLUSTER_NAME    --body "$(terraform -chdir=infra/terraform output -raw cluster_name)"
+gh variable set AWS_DEPLOY_ROLE_ARN --body "$(terraform -chdir=terraform output -raw github_deploy_role_arn)"
+gh variable set EKS_CLUSTER_NAME    --body "$(terraform -chdir=terraform output -raw cluster_name)"
 gh variable set AWS_REGION          --body ap-south-1
 ```
 

@@ -69,9 +69,9 @@ jobs:
         run: |
           # --wait-for-jobs: the release only succeeds once crm-migrate-r<N> completes.
           # --rollback-on-failure: a failed rollout is reverted to the last good revision.
-          helm upgrade --install "$RELEASE" charts/devops-crm \
+          helm upgrade --install "$RELEASE" helm/devops-crm \
             --namespace "$NAMESPACE" \
-            -f charts/devops-crm/values-eks.yaml \
+            -f helm/devops-crm/values-eks.yaml \
             --set imageTag="$IMAGE_TAG" \
             --wait=watcher --wait-for-jobs --rollback-on-failure --timeout 10m \
             --history-max 10

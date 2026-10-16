@@ -1,0 +1,10 @@
+# Namespace for the CRM. On EKS, Terraform creates the same namespace (terraform/kubernetes.tf);
+# locally: kubectl apply -f k8s/namespace.yaml, then helm upgrade --install ... -n crm
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: crm
+  labels:
+    app.kubernetes.io/part-of: devops-crm
+    # On EKS: pods become Ready only once their ALB target is healthy.
+    elbv2.k8s.aws/pod-readiness-gate-inject: enabled

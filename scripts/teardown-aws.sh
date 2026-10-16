@@ -39,8 +39,8 @@ if aws eks describe-cluster --name "$CLUSTER" >/dev/null 2>&1; then
 fi
 
 # 2. Everything Terraform created: node group, cluster, add-ons, IAM, VPC, NAT, KMS.
-log "\$ terraform -chdir=infra/terraform destroy -auto-approve"
-terraform -chdir=infra/terraform destroy -auto-approve -no-color 2>&1 | redact | grep -E 'Destroying|Destruction complete|Destroy complete|Error' | tee -a "$LOG"
+log "\$ terraform -chdir=terraform destroy -auto-approve"
+terraform -chdir=terraform destroy -auto-approve -no-color 2>&1 | redact | grep -E 'Destroying|Destruction complete|Destroy complete|Error' | tee -a "$LOG"
 
 # 3. Prove nothing billable is left.
 log "# Remaining resources tagged Project=devops-crm or created for the cluster"
