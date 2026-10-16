@@ -14,7 +14,7 @@ Repository: https://github.com/AkshatKushwaha-exe/Devops-CRM
 - Responsive navigation, keyboard-accessible dialogs, loading/empty/error states, and retry controls.
 - Validation, case-insensitive unique email addresses, and protection against deleting contacts with linked deals.
 
-This phase is a **local, single-user application**. The workspace name is a display label; authentication and multi-user permissions are not implemented. Servers bind to loopback. Cloud hosting, Docker packaging, CI/CD, Terraform, Kubernetes, and monitoring installations are reserved for the next phase.
+The CRM is a **single-user application**. The workspace name is a display label; authentication and multi-user permissions are not implemented, so do not expose a deployment publicly with real customer data.
 
 ## Stack
 
@@ -22,7 +22,36 @@ React + TypeScript + Vite · FastAPI · SQLAlchemy · Alembic · PostgreSQL · P
 
 PostgreSQL is the primary database. SQLite is also supported for a lightweight preview and isolated tests. Switching database URLs selects a different database; it does not transfer records. UI fonts and icons are bundled locally, with no runtime CDN dependency.
 
-## Start locally
+## Run with Docker Compose
+
+Prerequisite: Docker with Compose v2. From a fresh checkout:
+
+```bash
+docker compose up --build
+```
+
+Open **http://localhost:8080** (API reference at http://localhost:8080/api/docs). Startup is ordered by health checks:
+
+| Service | Image | Role |
+|---|---|---|
+| `db` | `postgres:18.6-alpine3.24` | PostgreSQL with the named volume `pgdata`; healthy when `pg_isready` passes |
+| `migrate` | backend image | Runs `python -m app.migrate upgrade` once, then exits; the API does not start until it succeeds |
+| `backend` | `backend/Dockerfile` | FastAPI on Alpine as UID 10001; healthy when `/ready` confirms the database and schema |
+| `frontend` | `frontend/Dockerfile` | Multi-stage: Vite build → `nginx-unprivileged` (UID 101) serving the UI and proxying `/api/` to the backend |
+
+The app containers run read-only with all Linux capabilities dropped. Only the frontend port is published; PostgreSQL and the API stay on the internal network.
+
+```bash
+docker compose down        # remove containers; data stays in the pgdata volume
+docker compose up -d       # recreate; records are still there
+docker compose down -v     # also delete the database volume
+```
+
+Copy `.env.example` to `.env` to change the database password or host port, or to run images published to GHCR instead of building locally.
+
+**Migrations.** `app.migrate upgrade` takes a PostgreSQL advisory lock, so concurrent runs are safe: one applies the migration, the others wait and find the schema at head. If the database is *ahead* of the image, for example after rolling back to an older image, the schema is left unchanged. Schema changes must therefore stay backward compatible for one release (expand, then contract). `app.migrate wait` blocks until the schema is ready.
+
+## Start locally (development)
 
 Prerequisites: Node.js 22.12+ (Node 24 recommended), pnpm 10, uv, and Python 3.12. `uv` can install Python 3.12 automatically. Dependency downloads need internet access on the first run.
 
@@ -35,7 +64,7 @@ bash scripts/dev.sh --seed
 The launcher installs locked dependencies, starts a private local PostgreSQL process on `127.0.0.1:55433`, applies migrations, inserts fictional demo data into an empty database, and starts the API and UI. The local PostgreSQL helper downloads platform-specific PostgreSQL binaries through `embedded-postgres`; no Docker or system database service is required. macOS arm64/x64 and Linux arm64/x64 are the intended environments for this Bash launcher.
 
 - Application: **http://127.0.0.1:3000**
-- API reference: **http://127.0.0.1:8000/docs**
+- API reference: **http://127.0.0.1:3000/api/docs** (also served directly by the API at `:8000/api/docs`)
 - Health: http://127.0.0.1:8000/health
 - Readiness: http://127.0.0.1:8000/ready
 - Application metrics: http://127.0.0.1:8000/metrics
@@ -124,6 +153,10 @@ See the [validation record](docs/VALIDATION.md) for every check that was execute
 backend/app/             API routes, models, validation, metrics, demo seed
 backend/alembic/         Versioned schema migration
 backend/tests/           API, business-rule, and migration tests
+backend/Dockerfile       API image (Alpine, non-root)
+frontend/Dockerfile      UI image (Vite build → unprivileged Nginx)
+frontend/nginx/          Nginx site template: static UI, /api proxy, /healthz
+compose.yaml             PostgreSQL, migration step, API, and UI
 frontend/src/            React screens, components, styling, component tests
 frontend/e2e/            Browser workflows
 frontend/scripts/        Evidence screenshot capture

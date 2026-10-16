@@ -116,7 +116,7 @@ export default function App() {
           <span className="note-line" />
         </div>
         <div className="sidebar-bottom">
-          <a href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">
+          <a href="/api/docs" target="_blank" rel="noreferrer">
             <CircleHelp size={17} />
             API documentation
             <ArrowUpRight size={14} />

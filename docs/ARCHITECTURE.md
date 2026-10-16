@@ -67,7 +67,7 @@ Contact deletion is restricted by both API checks and the database foreign key. 
 | GET | `/ready` | Database connectivity and application-table availability |
 | GET | `/metrics` | Prometheus request count and latency metrics |
 
-Full schemas and examples are generated at `/docs`. Successful creates return 201; deletes return 204. Unknown records return 404, conflicts 409, and invalid input 422. Database failures return a generic 503 without exposing connection details.
+Full schemas and examples are generated at `/api/docs` (OpenAPI document at `/api/openapi.json`). Successful creates return 201; deletes return 204. Unknown records return 404, conflicts 409, and invalid input 422. Database failures return a generic 503 without exposing connection details.
 
 ## Boundaries for this phase
 

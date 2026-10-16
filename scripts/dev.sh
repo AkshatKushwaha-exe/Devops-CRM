@@ -76,7 +76,7 @@ for url in ("http://127.0.0.1:8000/ready", "http://127.0.0.1:3000"):
         raise SystemExit(f"Server not ready: {url}. Check .local/backend.log and .local/frontend.log.")
 PY
 echo "CRM: http://127.0.0.1:3000"
-echo "API docs: http://127.0.0.1:8000/docs"
+echo "API docs: http://127.0.0.1:3000/api/docs"
 echo "Database mode: $database_mode. Press Ctrl+C to stop. Data is preserved in .local/."
 while true; do
   for pid in "${processes[@]}"; do

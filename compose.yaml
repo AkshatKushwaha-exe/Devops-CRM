@@ -1,0 +1,82 @@
+# Full CRM stack: docker compose up --build  →  http://localhost:8080
+# Startup order: db (healthy) → migrate (completes) → backend (healthy) → frontend.
+name: devops-crm
+
+x-app-hardening: &hardening
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+
+x-database-url: &database-url
+  DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD:-crm_local_only}@db:5432/${POSTGRES_DB:-crm}
+
+services:
+  db:
+    image: postgres:18.6-alpine3.24
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-crm}
+      POSTGRES_USER: ${POSTGRES_USER:-crm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crm_local_only}
+    volumes:
+      # PostgreSQL 18 images keep PGDATA in a versioned subdirectory of this mount.
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  migrate:
+    image: ${CRM_BACKEND_IMAGE:-devops-crm-backend:local}
+    build: ./backend
+    command: ["python", "-m", "app.migrate", "upgrade"]
+    environment: *database-url
+    depends_on:
+      db:
+        condition: service_healthy
+    <<: *hardening
+    restart: "no"
+
+  backend:
+    image: ${CRM_BACKEND_IMAGE:-devops-crm-backend:local}
+    build: ./backend
+    environment: *database-url
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      # /ready checks database connectivity and the migrated schema, not just the process.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    tmpfs: [/tmp]
+    <<: *hardening
+
+  frontend:
+    image: ${CRM_FRONTEND_IMAGE:-devops-crm-frontend:local}
+    build: ./frontend
+    environment:
+      API_UPSTREAM: backend:8000
+    ports:
+      - "${CRM_HTTP_PORT:-8080}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    # Nginx renders its config into conf.d at start and keeps pid/temp files in /tmp.
+    tmpfs:
+      - /tmp
+      - /etc/nginx/conf.d:uid=101,gid=101
+    <<: *hardening
+
+volumes:
+  pgdata:
