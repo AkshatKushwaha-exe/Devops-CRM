@@ -113,7 +113,7 @@ kubectl apply -f k8s/exercises/00-namespace.yaml -f k8s/exercises/01-invalid-ima
 | Step | Command | What you see |
 |---|---|---|
 | Symptom | `kubectl -n crm-lab rollout status deploy/lab-web` | Never completes; pods `0/1 ErrImagePull` → `ImagePullBackOff` |
-| Events | `kubectl -n crm-lab describe pod -l app=lab-web` (Events section) | `Failed to pull image "…:b74afac…bcda": … not found` |
+| Events | `kubectl -n crm-lab describe pod -l app=lab-web` (Events section) | `Failed to pull image "…:0dc37db…642c": … not found` |
 | Compare | `kubectl -n crm-lab get deploy lab-web -o jsonpath='{..image}'` and `gh api users/AkshatKushwaha-exe/packages/container/devops-crm-frontend/versions --jq '.[].metadata.container.tags[]'` | The deployed tag has 39 characters; the published SHA has 40 |
 | Dashboard | Grafana → *Containers waiting, by reason* | `crm-lab · ImagePullBackOff` series appears |
 | Fix | `kubectl -n crm-lab set image deploy/lab-web web=ghcr.io/akshatkushwaha-exe/devops-crm-frontend:<published-sha>` | Rollout completes; pods `1/1 Running` |

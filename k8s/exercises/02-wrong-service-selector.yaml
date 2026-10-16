@@ -21,7 +21,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: web
-          image: ghcr.io/akshatkushwaha-exe/devops-crm-frontend:b74afac1dcbd95aed14df1d1b197b4e7b24bcdad
+          image: ghcr.io/akshatkushwaha-exe/devops-crm-frontend:0dc37db33eefabf70ae19fad4d56ac8e063642cf
           ports:
             - { name: http, containerPort: 8080 }
           env:
