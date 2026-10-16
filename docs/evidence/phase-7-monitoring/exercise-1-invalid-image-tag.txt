@@ -1,0 +1,56 @@
+### Break
+$ kubectl apply -f k8s/exercises/00-namespace.yaml -f k8s/exercises/01-invalid-image-tag.yaml
+namespace/crm-lab created
+deployment.apps/lab-web created
+
+### Symptom
+$ kubectl -n crm-lab rollout status deploy/lab-web --timeout=20s
+Waiting for deployment "lab-web" rollout to finish: 0 of 2 updated replicas are available...
+error: timed out waiting for the condition
+
+$ kubectl -n crm-lab get pods
+NAME                      READY   STATUS             RESTARTS   AGE
+lab-web-8dd57498c-44pcf   0/1     ImagePullBackOff   0          45s
+lab-web-8dd57498c-8hjsg   0/1     ImagePullBackOff   0          45s
+
+### Diagnose
+$ kubectl -n crm-lab describe pod -l app=lab-web | sed -n '/Events/,$p'  (first pod)
+Events:
+  Type     Reason     Age                From               Message
+  ----     ------     ----               ----               -------
+  Normal   Scheduled  45s                default-scheduler  Successfully assigned crm-lab/lab-web-8dd57498c-44pcf to minikube
+  Normal   BackOff    18s (x2 over 43s)  kubelet            spec.containers{web}: Back-off pulling image "ghcr.io/akshatkushwaha-exe/devops-crm-frontend:b74afac1dcbd95aed14df1d1b197b4e7b24bcda"
+  Warning  Failed     18s (x2 over 43s)  kubelet            spec.containers{web}: Error: ImagePullBackOff
+  Normal   Pulling    5s (x3 over 45s)   kubelet            spec.containers{web}: Pulling image "ghcr.io/akshatkushwaha-exe/devops-crm-frontend:b74afac1dcbd95aed14df1d1b197b4e7b24bcda"
+  Warning  Failed     4s (x3 over 43s)   kubelet            spec.containers{web}: Failed to pull image "ghcr.io/akshatkushwaha-exe/devops-crm-frontend:b74afac1dcbd95aed14df1d1b197b4e7b24bcda": rpc error: code = NotFound desc = failed to pull and unpack image "ghcr.io/akshatkushwaha-exe/devops-crm-frontend:b74afac1dcbd95aed14df1d1b197b4e7b24bcda": failed to resolve reference "ghcr.io/akshatkushwaha-exe/devops-crm-frontend:b74afac1dcbd95aed14df1d1b197b4e7b24bcda": ghcr.io/akshatkushwaha-exe/devops-crm-frontend:b74afac1dcbd95aed14df1d1b197b4e7b24bcda: not found
+  Warning  Failed     4s (x3 over 43s)   kubelet            spec.containers{web}: Error: ErrImagePull
+
+$ kubectl -n crm-lab get events --field-selector reason=Failed --sort-by=.lastTimestamp | tail -3
+4s          Warning   Failed   pod/lab-web-8dd57498c-44pcf   Error: ErrImagePull
+0s          Warning   Failed   pod/lab-web-8dd57498c-8hjsg   Failed to pull image "ghcr.io/akshatkushwaha-exe/devops-crm-frontend:b74afac1dcbd95aed14df1d1b197b4e7b24bcda": rpc error: code = NotFound desc = failed to pull and unpack image "ghcr.io/akshatkushwaha-exe/devops-crm-frontend:b74afac1dcbd95aed14df1d1b197b4e7b24bcda": failed to resolve reference "ghcr.io/akshatkushwaha-exe/devops-crm-frontend:b74afac1dcbd95aed14df1d1b197b4e7b24bcda": ghcr.io/akshatkushwaha-exe/devops-crm-frontend:b74afac1dcbd95aed14df1d1b197b4e7b24bcda: not found
+0s          Warning   Failed   pod/lab-web-8dd57498c-8hjsg   Error: ErrImagePull
+
+$ kubectl -n crm-lab get deploy lab-web -o jsonpath='{.spec.template.spec.containers[0].image}'
+ghcr.io/akshatkushwaha-exe/devops-crm-frontend:b74afac1dcbd95aed14df1d1b197b4e7b24bcda
+$ gh api users/AkshatKushwaha-exe/packages/container/devops-crm-frontend/versions --jq '.[].metadata.container.tags[]' | grep b74afac
+b74afac1dcbd95aed14df1d1b197b4e7b24bcdad
+→ Root cause: the tag is 39 characters; the published tag has 40 (trailing 'd' missing).
+
+### Fix
+$ kubectl -n crm-lab set image deploy/lab-web web=ghcr.io/akshatkushwaha-exe/devops-crm-frontend:b74afac1dcbd95aed14df1d1b197b4e7b24bcdad
+deployment.apps/lab-web image updated
+$ kubectl -n crm-lab rollout status deploy/lab-web
+Waiting for deployment "lab-web" rollout to finish: 0 out of 2 new replicas have been updated...
+Waiting for deployment "lab-web" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "lab-web" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "lab-web" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "lab-web" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "lab-web" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "lab-web" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "lab-web" rollout to finish: 1 old replicas are pending termination...
+deployment "lab-web" successfully rolled out
+$ kubectl -n crm-lab get pods
+NAME                       READY   STATUS        RESTARTS   AGE
+lab-web-7fbcdff7c9-54sjl   1/1     Running       0          7s
+lab-web-7fbcdff7c9-spvms   1/1     Running       0          6s
+lab-web-8dd57498c-44pcf    0/1     Terminating   0          65s

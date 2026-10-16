@@ -1,0 +1,80 @@
+{{- /* Rendered only when the Prometheus Operator CRDs exist (kube-prometheus-stack installed). */}}
+{{- $sm := .Values.metrics.serviceMonitor }}
+{{- if and $sm.enabled (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1/ServiceMonitor") }}
+{{- $fullname := include "crm.fullname" . }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $fullname }}-backend
+  labels:
+    {{- include "crm.labels" (dict "ctx" $ "component" "backend") | nindent 4 }}
+    {{- with $sm.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "crm.componentSelector" (dict "ctx" $ "component" "backend") | nindent 6 }}
+  namespaceSelector:
+    matchNames: [{{ .Release.Namespace }}]
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ $sm.interval }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ $fullname }}-alerts
+  labels:
+    {{- include "crm.labels" (dict "ctx" $ "component" "backend") | nindent 4 }}
+    {{- with $sm.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: devops-crm
+      rules:
+        - alert: CrmHighErrorRate
+          expr: |
+            100 * (sum(rate(crm_http_requests_total{namespace="{{ .Release.Namespace }}", status=~"5.."}[5m])) or vector(0))
+              / clamp_min(sum(rate(crm_http_requests_total{namespace="{{ .Release.Namespace }}"}[5m])), 1e-9) > 5
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: More than 5% of CRM API responses are 5xx
+            description: Check backend logs (kubectl -n {{ .Release.Namespace }} logs deploy/{{ $fullname }}-backend) and database readiness.
+        - alert: CrmHighLatency
+          expr: |
+            histogram_quantile(0.95, sum by (le) (rate(crm_http_request_duration_seconds_bucket{namespace="{{ .Release.Namespace }}", route!~"/health|/ready"}[5m]))) > 1
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: CRM API p95 latency above 1 s
+        - alert: CrmApiUnavailable
+          expr: sum(kube_deployment_status_replicas_available{namespace="{{ .Release.Namespace }}", deployment="{{ $fullname }}-backend"}) < 1
+          for: 2m
+          labels: { severity: critical }
+          annotations:
+            summary: No ready CRM API pods
+        - alert: CrmPodsWaiting
+          expr: sum by (pod, reason) (kube_pod_container_status_waiting_reason{namespace="{{ .Release.Namespace }}", reason=~"ImagePullBackOff|ErrImagePull|CrashLoopBackOff|CreateContainerConfigError"}) > 0
+          for: 5m
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ "{{" }} $labels.pod {{ "}}" }} is stuck in {{ "{{" }} $labels.reason {{ "}}" }}"
+            description: Run kubectl -n {{ .Release.Namespace }} describe pod and read the Events section.
+{{- end }}
+{{- if .Values.metrics.dashboard.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "crm.fullname" . }}-grafana-dashboard
+  labels:
+    {{- include "crm.labels" (dict "ctx" $ "component" "monitoring") | nindent 4 }}
+    {{- toYaml .Values.metrics.dashboard.labels | nindent 4 }}
+data:
+  devops-crm-overview.json: |-
+    {{- .Files.Get "dashboards/crm-overview.json" | nindent 4 }}
+{{- end }}

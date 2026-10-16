@@ -1,0 +1,43 @@
+### Break
+$ kubectl apply -f k8s/exercises/02-wrong-service-selector.yaml
+deployment.apps/lab-api-gateway created
+service/lab-api-gateway created
+
+### Symptom
+$ kubectl -n crm-lab get pods -l app=lab-api-gateway
+NAME                               READY   STATUS    RESTARTS   AGE
+lab-api-gateway-77ccbd4477-qmr8p   1/1     Running   0          2s
+lab-api-gateway-77ccbd4477-zzfql   1/1     Running   0          2s
+$ kubectl -n crm-lab run probe --rm -i --restart=Never --image=busybox:1.37 -- wget -qO- -T 3 http://lab-api-gateway/healthz
+All commands and output from this session will be recorded in container logs, including credentials and sensitive information passed through the command prompt.
+If you don't see a command prompt, try pressing enter.
+wget: can't connect to remote host (10.107.240.74): Connection refused
+pod crm-lab/probe terminated (Error)
+
+### Diagnose
+$ kubectl -n crm-lab get endpointslices -l kubernetes.io/service-name=lab-api-gateway
+NAME                    ADDRESSTYPE   PORTS     ENDPOINTS   AGE
+lab-api-gateway-xkhjv   IPv4          <unset>   <unset>     18s
+$ kubectl -n crm-lab describe svc lab-api-gateway | grep -E 'Selector|Endpoints'
+Selector:                 app=api-gateway,tier=frontend
+Endpoints:                
+$ kubectl -n crm-lab get pods -l app=lab-api-gateway --show-labels
+NAME LABELS
+lab-api-gateway-77ccbd4477-qmr8p app=lab-api-gateway,pod-template-hash=77ccbd4477,tier=edge
+lab-api-gateway-77ccbd4477-zzfql app=lab-api-gateway,pod-template-hash=77ccbd4477,tier=edge
+$ kubectl -n crm-lab get pods -l app=api-gateway,tier=frontend   # what the Service actually selects
+No resources found in crm-lab namespace.
+→ Root cause: selector app=api-gateway,tier=frontend vs pod labels app=lab-api-gateway,tier=edge.
+
+### Fix
+$ kubectl -n crm-lab patch svc lab-api-gateway --type merge -p '{"spec":{"selector":{"app":"lab-api-gateway","tier":"edge"}}}'
+service/lab-api-gateway patched
+$ kubectl -n crm-lab get endpointslices -l kubernetes.io/service-name=lab-api-gateway
+NAME                    ADDRESSTYPE   PORTS   ENDPOINTS                 AGE
+lab-api-gateway-xkhjv   IPv4          8080    10.244.1.85,10.244.0.41   22s
+$ kubectl -n crm-lab run probe ... wget -qO- http://lab-api-gateway/healthz ; ... /api/version
+All commands and output from this session will be recorded in container logs, including credentials and sensitive information passed through the command prompt.
+If you don't see a command prompt, try pressing enter.
+warning: couldn't attach to pod/probe, falling back to streaming logs: Internal error occurred: Internal error occurred: error attaching to container: container is in CONTAINER_EXITED state
+ok
+{"version":"b74afac1dcbd95aed14df1d1b197b4e7b24bcdad"}

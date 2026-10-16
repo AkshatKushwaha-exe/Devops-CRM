@@ -121,6 +121,12 @@ kubectl -n crm delete pod crm-postgres-0                                       #
 kubectl -n crm apply -f k8s/load-test.yaml && kubectl -n crm get hpa -w        # HPA scaling
 ```
 
+## Monitoring and troubleshooting
+
+`bash scripts/install-monitoring.sh` installs Prometheus and Grafana (kube-prometheus-stack) into the current cluster. The chart's ServiceMonitor scrapes the API's `/metrics`, a PrometheusRule adds four alerts, and Grafana loads the **DevOps CRM · Service overview** dashboard: traffic, latency percentiles, error ratio, CPU and memory per pod, HPA replicas, and waiting containers.
+
+Rehearsed failure drills in an isolated namespace: an invalid image tag, a Service with wrong selectors, and HPA scaling under load. See [docs/OPERATIONS.md](docs/OPERATIONS.md#troubleshooting-exercises).
+
 ## Start locally (development)
 
 Prerequisites: Node.js 22.12+ (Node 24 recommended), pnpm 10, uv, and Python 3.12. `uv` can install Python 3.12 automatically. Dependency downloads need internet access on the first run.
@@ -231,6 +237,7 @@ compose.yaml             PostgreSQL, migration step, API, and UI
 charts/devops-crm/       Helm chart (values-local.yaml for minikube, values-eks.yaml for AWS)
 infra/terraform/         VPC, EKS, node group, controllers, GitHub OIDC deploy role
 k8s/                     Load test and troubleshooting exercises
+monitoring/              kube-prometheus-stack values (scripts/install-monitoring.sh)
 frontend/src/            React screens, components, styling, component tests
 frontend/e2e/            Browser workflows
 frontend/scripts/        Evidence screenshot capture

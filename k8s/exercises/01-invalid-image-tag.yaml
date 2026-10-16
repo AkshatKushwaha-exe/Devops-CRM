@@ -1,0 +1,43 @@
+# Exercise 1: a deployment whose image tag does not exist (a truncated commit SHA).
+# Symptoms: pods never become Ready (ErrImagePull → ImagePullBackOff), rollout never completes.
+# Diagnose and fix: docs/OPERATIONS.md#exercise-1-invalid-image-tag
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lab-web
+  namespace: crm-lab
+  labels: { app: lab-web }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: lab-web }
+  template:
+    metadata:
+      labels: { app: lab-web }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: web
+          # BUG: the commit SHA is missing its last character, so this tag was never published.
+          image: ghcr.io/akshatkushwaha-exe/devops-crm-frontend:b74afac1dcbd95aed14df1d1b197b4e7b24bcda
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            - { name: API_UPSTREAM, value: "crm-backend.crm.svc.cluster.local:8000" }
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: conf, mountPath: /etc/nginx/conf.d }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: conf, emptyDir: {} }
+        - { name: tmp, emptyDir: {} }

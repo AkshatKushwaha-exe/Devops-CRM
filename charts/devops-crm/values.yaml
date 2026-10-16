@@ -101,13 +101,14 @@ podDisruptionBudget:
 
 metrics:
   serviceMonitor:
-    # Requires the Prometheus Operator CRDs (kube-prometheus-stack).
-    enabled: false
+    # ServiceMonitor for the API's /metrics plus alert rules. Skipped automatically when the
+    # Prometheus Operator CRDs (kube-prometheus-stack) are not installed.
+    enabled: true
     interval: 15s
     labels: {}
   dashboard:
     # Grafana dashboard ConfigMap picked up by the kube-prometheus-stack sidecar.
-    enabled: false
+    enabled: true
     labels:
       grafana_dashboard: "1"
 
