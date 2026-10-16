@@ -1,0 +1,27 @@
+$ git diff --stat
+ frontend/src/styles.css | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+$ git diff
+-  --sidebar: #173e32;
+-  --sidebar-hover: #285140;
+-  --accent: #2c624a;
+-  --accent-hover: #214e39;
++  --sidebar: #1f2a5c;
++  --sidebar-hover: #2d3b7a;
++  --accent: #4338ca;
++  --accent-hover: #3730a3;
+
+$ git commit -am "feat: switch the brand accent from green to indigo"
+[demo/indigo-accent 25c7045] feat: switch the brand accent from green to indigo
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+$ git push -u origin demo/indigo-accent
+branch 'demo/indigo-accent' set up to track 'origin/demo/indigo-accent'.
+
+$ gh pr create --fill
+https://github.com/AkshatKushwaha-exe/Devops-CRM/pull/14
+
+$ gh pr merge --merge
+# merged PR #14 into main; the push to main starts the pipeline
+

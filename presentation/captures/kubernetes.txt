@@ -1,0 +1,43 @@
+$ kubectl get nodes
+NAME                                          STATUS   VERSION               INSTANCE         ZONE
+ip-10-20-21-55.ap-south-1.compute.internal    Ready    v1.36.4-eks-b9510e3   m7i-flex.large   ap-south-1a
+ip-10-20-37-143.ap-south-1.compute.internal   Ready    v1.36.4-eks-b9510e3   m7i-flex.large   ap-south-1b
+
+$ kubectl -n crm get pods
+NAME                            READY   STATUS      NODE
+crm-backend-54559f6bd8-n4tb2    true    Running     ip-10-20-37-143.ap-south-1.compute.internal
+crm-backend-54559f6bd8-s2z4s    true    Running     ip-10-20-21-55.ap-south-1.compute.internal
+crm-frontend-769dc86698-npsgc   true    Running     ip-10-20-37-143.ap-south-1.compute.internal
+crm-frontend-769dc86698-qgszs   true    Running     ip-10-20-37-143.ap-south-1.compute.internal
+crm-migrate-r8-7fnkz            false   Succeeded   ip-10-20-37-143.ap-south-1.compute.internal
+crm-postgres-0                  true    Running     ip-10-20-21-55.ap-south-1.compute.internal
+
+$ kubectl -n crm get svc,ingress
+NAME                   TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+service/crm-backend    ClusterIP   172.20.95.123    <none>        8000/TCP   125m
+service/crm-frontend   ClusterIP   172.20.85.86     <none>        80/TCP     125m
+service/crm-postgres   ClusterIP   172.20.147.151   <none>        5432/TCP   125m
+
+NAME                            CLASS   HOSTS   ADDRESS                                             PORTS   AGE
+ingress.networking.k8s.io/crm   alb     *       devops-crm-471212951.ap-south-1.elb.amazonaws.com   80      125m
+
+@@ 1
+$ kubectl -n crm get hpa,statefulset,pvc
+horizontalpodautoscaler.autoscaling/crm-backend   Deployment/crm-backend   cpu: 4%/60%   2     6     2     125m
+statefulset.apps/crm-postgres   1/1   125m   postgres   postgres:18.6-alpine3.24
+persistentvolumeclaim/data-crm-postgres-0   Bound   pvc-0477c9c8-4de7-44ce-98f1-8de2e5e8475e   10Gi   RWO   gp3   <unset>   125m   Filesystem
+
+@@ 2
+$ helm list -n crm
+NAME	NAMESPACE	REVISION	UPDATED                                	STATUS  	CHART           	APP VERSION
+crm 	crm      	8       	2026-10-16 16:23:33.697664319 +0000 UTC	deployed	devops-crm-0.1.0	0.1.0      
+
+$ helm history crm -n crm
+REVISION	UPDATED                 	STATUS    	CHART           	APP VERSION	DESCRIPTION     
+3       	Fri Oct 16 14:39:50 2026	superseded	devops-crm-0.1.0	0.1.0      	Upgrade complete
+4       	Fri Oct 16 14:42:10 2026	superseded	devops-crm-0.1.0	0.1.0      	Upgrade complete
+5       	Fri Oct 16 14:53:13 2026	superseded	devops-crm-0.1.0	0.1.0      	Upgrade complete
+6       	Fri Oct 16 15:44:01 2026	superseded	devops-crm-0.1.0	0.1.0      	Upgrade complete
+7       	Fri Oct 16 16:10:49 2026	superseded	devops-crm-0.1.0	0.1.0      	Upgrade complete
+8       	Fri Oct 16 16:23:33 2026	deployed  	devops-crm-0.1.0	0.1.0      	Upgrade complete
+
