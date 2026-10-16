@@ -2,6 +2,14 @@
 
 Every grading requirement mapped to where it is implemented and the evidence that it works. Detailed results per phase are in [VALIDATION.md](VALIDATION.md); the live walkthrough is [DEMO.md](DEMO.md).
 
+## Presentation video
+
+A 7½-minute narrated walkthrough with captions, generated from code in [`presentation/`](../presentation/README.md): Playwright records the live app on EKS, GitHub Actions, GHCR, Prometheus, and Grafana; terminal scenes replay real command output captured from the cluster. It follows the demo order: application → commit → pipeline → images → Trivy → GHCR → Terraform → EKS → Helm → ingress → autoscaling → monitoring → troubleshooting.
+
+The live change shown in the video is [PR #14](https://github.com/AkshatKushwaha-exe/Devops-CRM/pull/14) (brand accent green → indigo): CI run [38931035243](https://github.com/AkshatKushwaha-exe/Devops-CRM/actions/runs/38931035243) passed all four Trivy gates and deployed `104715a` to EKS (Helm revision 7 → 8). Evidence: [demo-trivy-gates-and-publish.jpg](evidence/phase-6-cd/demo-trivy-gates-and-publish.jpg) · [demo-deploy-summary.jpg](evidence/phase-6-cd/demo-deploy-summary.jpg).
+
+Output: `presentation/output/devops-crm-presentation.mp4` (1080p30 H.264/AAC with an embedded English subtitle track) plus `.srt` and `.vtt`. The build output is git-ignored.
+
 ## Requirements → implementation → evidence
 
 | # | Requirement | Implementation | Evidence |
@@ -21,8 +29,8 @@ Every grading requirement mapped to where it is implemented and the evidence tha
 |---|---|---|
 | Tests | ✅ `evidence/tests/` + CI test jobs | — |
 | Docker Compose | ✅ `phase-2-compose/` | — |
-| GitHub Actions run | ✅ `phase-3-ci/actions-run-main.jpg` | ✅ `phase-6-cd/actions-ci-cd-run-0dc37db.jpg` |
-| Trivy results | ✅ `phase-3-ci/trivy-*` | — |
+| GitHub Actions run | ✅ `phase-3-ci/actions-run-main.jpg` | ✅ `phase-6-cd/actions-ci-cd-run-0dc37db.jpg`, `phase-6-cd/demo-deploy-summary.jpg` |
+| Trivy results | ✅ `phase-3-ci/trivy-*` | ✅ `phase-6-cd/demo-trivy-gates-and-publish.jpg` |
 | GHCR tags | ✅ `phase-3-ci/ghcr-backend-package.jpg` | — |
 | Terraform | — | ✅ `phase-5-aws/terraform-apply.txt` |
 | Running pods / Services | ✅ `phase-4-kubernetes/*.txt` | ✅ `phase-5-aws/app-on-eks-before.txt`, `phase-6-cd/rollback.txt` |
@@ -34,4 +42,4 @@ Every grading requirement mapped to where it is implemented and the evidence tha
 
 ## Commit history
 
-Each phase was developed on its own branch and merged through a pull request whose CI had to pass ([#1](https://github.com/AkshatKushwaha-exe/Devops-CRM/pull/1)–[#10](https://github.com/AkshatKushwaha-exe/Devops-CRM/pull/10)). Merge commits keep each phase's individual commits. `git log --oneline --no-merges main` lists the feature commits; there are more than 10.
+Each phase was developed on its own branch and merged through a pull request whose CI had to pass ([#1](https://github.com/AkshatKushwaha-exe/Devops-CRM/pull/1)–[#14](https://github.com/AkshatKushwaha-exe/Devops-CRM/pull/14)), including the live change in the video (#14). Merge commits keep each phase's individual commits. `git log --oneline --no-merges main` lists the feature commits; there are more than 10.
