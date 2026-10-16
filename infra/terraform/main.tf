@@ -65,6 +65,11 @@ module "eks" {
   endpoint_public_access       = true
   endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
 
+  # Audit/API control-plane logs are verbose and billed per GB ingested; keep the cheap
+  # authenticator log (who signed in) for a week. Enable "audit" for real environments.
+  enabled_log_types                      = ["authenticator"]
+  cloudwatch_log_group_retention_in_days = 7
+
   # Access entries (no aws-auth ConfigMap). Whoever runs `terraform apply` is cluster admin.
   authentication_mode                      = "API"
   enable_cluster_creator_admin_permissions = true
