@@ -29,5 +29,3 @@ tfplan
 terraform.tfvars
 crash.log
 
-# Generated presentation video, audio, and recordings
-presentation/output/

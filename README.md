@@ -4,6 +4,8 @@ A local sales workspace for managing contacts, tracking opportunities, and under
 
 Repository: https://github.com/AkshatKushwaha-exe/Devops-CRM
 
+Presentation video (7½ minutes, captioned): [docs/devops-crm-presentation.mp4](docs/devops-crm-presentation.mp4)
+
 ## What works
 
 - Dashboard with contact count, open deals, pipeline value, won revenue, win rate, and value by stage.
@@ -242,5 +244,5 @@ frontend/src/            React screens, components, styling, component tests
 frontend/e2e/            Browser workflows
 frontend/scripts/        Evidence screenshot capture
 scripts/                 Local launch and database helper, browser-test server
-docs/                    Architecture, operations (CD, rollback, troubleshooting), validation, evidence
+docs/                    Architecture, operations (CD, rollback, troubleshooting), validation, evidence, presentation video
 ```
