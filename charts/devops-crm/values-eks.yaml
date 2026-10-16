@@ -1,0 +1,25 @@
+# Amazon EKS (infra/terraform): AWS Load Balancer Controller + EBS CSI driver.
+# CD installs with: --set imageTag=<commit-sha>
+ingress:
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip # route straight to pod IPs
+    alb.ingress.kubernetes.io/load-balancer-name: devops-crm
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz # frontend target group
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "10"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    # Let in-flight requests finish while a pod is deregistered during rollouts.
+    alb.ingress.kubernetes.io/target-group-attributes: deregistration_delay.timeout_seconds=15
+
+backend:
+  service:
+    annotations:
+      # The API target group checks the database-aware readiness endpoint.
+      alb.ingress.kubernetes.io/healthcheck-path: /ready
+
+postgresql:
+  persistence:
+    storageClass: gp3 # encrypted EBS, created by infra/terraform
+    size: 10Gi
