@@ -1,0 +1,7 @@
+# Isolated namespace for troubleshooting drills; deleting it removes every exercise.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: crm-lab
+  labels:
+    app.kubernetes.io/part-of: devops-crm-exercises

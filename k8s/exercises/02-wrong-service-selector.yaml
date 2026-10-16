@@ -1,0 +1,57 @@
+# Exercise 2: healthy pods behind a Service whose selector matches nothing.
+# Symptoms: pods are Running/Ready, but requests to the Service time out or are refused,
+# and the Service has no endpoints.
+# Diagnose and fix: docs/OPERATIONS.md#exercise-2-service-with-incorrect-selectors
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lab-api-gateway
+  namespace: crm-lab
+  labels: { app: lab-api-gateway }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: lab-api-gateway, tier: edge }
+  template:
+    metadata:
+      labels: { app: lab-api-gateway, tier: edge }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: web
+          image: ghcr.io/akshatkushwaha-exe/devops-crm-frontend:b74afac1dcbd95aed14df1d1b197b4e7b24bcdad
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            - { name: API_UPSTREAM, value: "crm-backend.crm.svc.cluster.local:8000" }
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: conf, mountPath: /etc/nginx/conf.d }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: conf, emptyDir: {} }
+        - { name: tmp, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lab-api-gateway
+  namespace: crm-lab
+spec:
+  # BUG: the pods are labelled app=lab-api-gateway, tier=edge; "api-gateway" and "frontend"
+  # match nothing, so the Service gets no endpoints.
+  selector:
+    app: api-gateway
+    tier: frontend
+  ports:
+    - { name: http, port: 80, targetPort: http }

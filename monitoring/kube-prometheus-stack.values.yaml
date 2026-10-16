@@ -1,0 +1,60 @@
+# kube-prometheus-stack for the DevOps CRM (local minikube and EKS).
+# Install: bash scripts/install-monitoring.sh
+# Prometheus discovers the app through the chart's ServiceMonitor; Grafana loads the
+# dashboard ConfigMap labelled grafana_dashboard=1 from any namespace.
+
+fullnameOverride: kps
+
+alertmanager:
+  enabled: false # alerts are evaluated and visible in Prometheus; no notification channel in scope
+
+grafana:
+  enabled: true
+  fullnameOverride: kps-grafana # subcharts do not inherit the parent override
+  defaultDashboardsEnabled: true # cluster/node/pod dashboards alongside the CRM one
+  defaultDashboardsTimezone: browser
+  admin:
+    existingSecret: grafana-admin # created by the install script with a random password
+    userKey: admin-user
+    passwordKey: admin-password
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi } # Grafana 12 with the default dashboards OOMs at 256Mi
+
+prometheus:
+  prometheusSpec:
+    # Pick up ServiceMonitors/PrometheusRules from every namespace, not just this release's.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    retention: 3d
+    scrapeInterval: 15s
+    evaluationInterval: 15s
+    resources:
+      requests: { cpu: 100m, memory: 512Mi }
+      limits: { memory: 1Gi }
+
+prometheusOperator:
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+
+kube-state-metrics:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+
+prometheus-node-exporter:
+  resources:
+    requests: { cpu: 10m, memory: 24Mi }
+
+# Control-plane components are not scrapeable on managed EKS or minikube's default config;
+# disabling them avoids permanently-down targets.
+kubeEtcd: { enabled: false }
+kubeControllerManager: { enabled: false }
+kubeScheduler: { enabled: false }
+kubeProxy: { enabled: false }

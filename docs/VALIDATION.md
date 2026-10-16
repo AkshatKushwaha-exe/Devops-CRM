@@ -102,3 +102,21 @@ Validated on minikube v1.39 (Kubernetes 1.37, two arm64 nodes, containerd) with 
 | Load-test pitfall found | With keep-alive connections, kube-proxy pins each connection to a pod, so new replicas sat idle while the first two hit their 500m limit ([log](evidence/phase-4-kubernetes/hpa-keepalive-skew.txt)). The load test now opens a connection per request, like independent clients; Ingress and ALB balance per request anyway |
 
 Screenshots through the Ingress: [desktop overview](evidence/phase-4-kubernetes/desktop-overview.png) · [desktop pipeline](evidence/phase-4-kubernetes/desktop-pipeline.png) · [mobile overview](evidence/phase-4-kubernetes/mobile-overview.png)
+
+## Phase 6 — Continuous deployment (prepared)
+
+`deploy.yml` and the `Deploy to EKS` CI job were merged in [#6](https://github.com/AkshatKushwaha-exe/Devops-CRM/pull/6). On `main` (run for `b74afac`) the job is **skipped** because the AWS infrastructure and `AWS_DEPLOY_ROLE_ARN` do not exist yet, while images are still published. The new version endpoint was verified on minikube: after `helm upgrade` to `b74afac`, `/api/version` returned `b74afac1dcbd95aed14df1d1b197b4e7b24bcdad` from every pod once the rolling update finished, and the footer shows `build b74afac`. The live EKS deployment is recorded under Phase 5/6 on AWS below.
+
+## Phase 7 — Monitoring and troubleshooting (local cluster)
+
+| Check | Result |
+|---|---|
+| `scripts/install-monitoring.sh` | kube-prometheus-stack 92.9.0 (Prometheus v3.15, Grafana, kube-state-metrics, node-exporter) in `monitoring` |
+| Prometheus targets | 17/17 up, including `serviceMonitor/crm/crm-backend` (2 → 4 targets as the HPA scaled). [screenshot](evidence/phase-7-monitoring/prometheus-targets.jpg) |
+| Alert rules | `devops-crm` group loaded: CrmHighErrorRate, CrmHighLatency, CrmApiUnavailable, CrmPodsWaiting. [screenshot](evidence/phase-7-monitoring/prometheus-alert-rules.jpg) |
+| Grafana dashboard under load | 147 req/s, 0.00% 5xx, p95 379 ms, HPA 2 → 4 → 6, CPU per pod, memory, and `crm-lab · ImagePullBackOff` in the waiting-containers panel. [top](evidence/phase-7-monitoring/grafana-dashboard-top.jpg) · [bottom](evidence/phase-7-monitoring/grafana-dashboard-bottom.jpg) |
+| Exercise 1, invalid image tag | `ErrImagePull`/`ImagePullBackOff`; Events show `…:b74afac…bcda: not found`; compared with the GHCR tags (39 vs 40 characters); fixed with `kubectl set image`. [log](evidence/phase-7-monitoring/exercise-1-invalid-image-tag.txt) |
+| Exercise 2, wrong Service selector | Pods Ready but `Connection refused`; EndpointSlice empty; selector `app=api-gateway,tier=frontend` vs labels `app=lab-api-gateway,tier=edge`; patched, and endpoints and `/api/version` worked. [log](evidence/phase-7-monitoring/exercise-2-wrong-service-selector.txt) |
+| Exercise 3, HPA | 16,096 requests, 100% HTTP 200; `SuccessfulRescale` to 4 and 6 |
+
+**Unplanned incident, also diagnosed:** after Prometheus was added, Grafana showed no data. Its datasource check failed with `lookup kps-prometheus.monitoring: i/o timeout`, and Prometheus restarted repeatedly on liveness timeouts. Pods on `minikube-m02` received `connection refused` from the DNS Service, while direct pod-IP traffic worked. `docker stats` showed the control-plane node container at **2.08/2.15 GiB**: minikube's Docker driver caps each node at about 2 GiB, while Kubernetes sees the host's 8 GiB, so the scheduler overpacked the node (API server 903 Mi). Raising both node containers to 3 GiB (`docker update --memory 3g`) restored DNS, Prometheus readiness, and the Grafana datasource. Grafana's own 256 Mi limit also caused an `OOMKilled` restart, so it was raised to 512 Mi. EKS `t4g.large` nodes report their real 8 GiB, so the scheduler sees the true capacity there.
