@@ -65,3 +65,9 @@ def test_seed_is_idempotent(database, monkeypatch, client):
         assert db.scalar(select(func.count(Deal.id))) == 9
     for path in ("/api/contacts", "/api/deals", "/api/dashboard"):
         assert client.get(path).status_code == 200
+
+
+def test_api_docs_are_served_under_the_api_prefix(client):
+    assert client.get("/api/openapi.json").json()["info"]["title"] == "DevOps CRM"
+    assert client.get("/api/docs").status_code == 200
+    assert client.get("/docs").status_code == 404

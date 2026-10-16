@@ -10,7 +10,15 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.routes import contacts, dashboard, deals
 
-app = FastAPI(title="DevOps CRM", version="0.1.0", description="A focused local sales workspace.")
+app = FastAPI(
+    title="DevOps CRM",
+    version="0.1.0",
+    description="A focused local sales workspace.",
+    # Served under /api so the same proxy route reaches the docs locally and behind Ingress.
+    docs_url="/api/docs",
+    redoc_url=None,
+    openapi_url="/api/openapi.json",
+)
 app.include_router(contacts.router)
 app.include_router(deals.router)
 app.include_router(dashboard.router)

@@ -53,3 +53,21 @@ The desktop sidebar is `position: sticky`, so full-page captures show it only fo
 ### Known notes
 
 - Pytest emits a Starlette deprecation warning about its HTTPX test-client shim. It affects only the test client, not the runtime.
+
+## Phase 2 — Containers and Docker Compose
+
+Validated on 16 October 2026 with Docker Desktop 29.6 (linux/arm64) and Trivy 0.75.
+
+| Check | Result |
+|---|---|
+| Backend image | `python:3.12.15-alpine3.24`, dependencies from `uv.lock`, pip removed, runs as `uid=10001(crm)`, 185 MB |
+| Frontend image | `node:24.22-alpine3.24` build → `nginx-unprivileged:1.30-alpine3.24`, runs as `uid=101(nginx)`, 91 MB |
+| Trivy, HIGH/CRITICAL (fixed **and** unfixed) | Backend 0 · Frontend 0. The first backend build on `python:3.12-slim` (Debian 13) had 44 unfixed HIGH OS findings, so the base moved to Alpine instead of weakening the gate with `--ignore-unfixed` |
+| `docker compose up --build` | `db` healthy → `migrate` exited 0 (`Migrations applied; schema is at head.`) → `backend` healthy (`/ready`) → `frontend` healthy |
+| Nginx routes | `/` 200 HTML · `/api/dashboard` 200 JSON · `/api/docs` 200 · `/healthz` 200; `nosniff`, `X-Frame-Options: DENY`, no server version |
+| UI through Nginx (Chrome) | Created contact *Arjun Nair* and a ₹1,80,000 Proposal deal; dashboard showed 1 contact, 1 active deal, ₹1,80,000 pipeline |
+| Container recreation | `docker compose down` removed all containers and the network; after `docker compose up -d` the contact, deal, and activity were intact; migrate reported `Schema is already at head.` |
+| Concurrent migrations | Three `migrate` containers started at once against an empty database: one applied `0001`, two waited on the advisory lock and reported the schema already at head |
+| Fresh checkout | Clean `git clone` of this branch, `docker compose -p crm-fresh up --build` on port 8081 → all services healthy (see below) |
+
+Evidence: [compose-status.txt](evidence/phase-2-compose/compose-status.txt) · [desktop overview](evidence/phase-2-compose/desktop-overview.png) · [desktop pipeline](evidence/phase-2-compose/desktop-pipeline.png) · [desktop contacts](evidence/phase-2-compose/desktop-contacts.png) · [mobile overview](evidence/phase-2-compose/mobile-overview.png) · [mobile navigation](evidence/phase-2-compose/mobile-navigation.png)
