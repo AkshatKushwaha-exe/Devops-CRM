@@ -20,3 +20,10 @@ test-results/
 *.tsbuildinfo
 .DS_Store
 pytest-report.xml
+# Terraform (the provider lock file is committed)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars
+crash.log
