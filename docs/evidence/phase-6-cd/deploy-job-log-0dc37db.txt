@@ -1,0 +1,14 @@
+# Deploy job log excerpt: automatic deployment of 0dc37db after merging PR #10 (run 38916507737)
+arn:aws:sts::<account-id>:assumed-role/devops-crm-github-deploy/gha-deploy-38916507737
+Release "crm" has been upgraded. Happy Helming!
+STATUS: deployed
+REVISION: 2
+Schema is already at head.
+deployment "crm-backend" successfully rolled out
+deployment "crm-frontend" successfully rolled out
+Phase:          Succeeded
+http://crm-backend:8000/ready 200
+http://crm-frontend:80/healthz 200
+http://crm-frontend:80/api/dashboard 200
+contacts: 1 pipeline: 0.00
+Serving 0dc37db33eefabf70ae19fad4d56ac8e063642cf at http://devops-crm-471212951.ap-south-1.elb.amazonaws.com

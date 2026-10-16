@@ -63,19 +63,18 @@ Approximate on-demand prices in ap-south-1 while the stack exists (about $0.38/h
 
 ## Destroy
 
-Delete the app first so the controller removes the ALB and the EBS CSI driver deletes the volume. Otherwise Terraform cannot delete the VPC.
-
 ```bash
-helm uninstall crm -n crm --wait
-helm uninstall kube-prometheus-stack -n monitoring --wait 2>/dev/null || true
-kubectl delete pvc --all -n crm
-kubectl -n crm delete secret crm-database   # kept by Helm policy
-# wait until no ALB or "kubernetes.io/created-for/pvc" EBS volume remains:
-aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalancerName, `devops-crm`)].LoadBalancerName'
-aws ec2 describe-volumes --filters Name=tag-key,Values=kubernetes.io/created-for/pvc/name --query 'Volumes[].VolumeId'
-
-terraform destroy
+AWS_PROFILE=devops-crm bash scripts/teardown-aws.sh
 ```
+
+The script removes things in the order AWS needs, then records proof in `docs/evidence/phase-8-teardown/teardown.log`:
+
+1. `helm uninstall crm`, then delete the PVC and the kept database Secret. The load balancer controller deletes the ALB, and the EBS CSI driver deletes the volume.
+2. `helm uninstall kube-prometheus-stack`, then wait until no `devops-crm` ALB or PVC volume remains. Otherwise the VPC cannot be deleted.
+3. `terraform destroy`.
+4. List clusters, instances, NAT gateways, load balancers, volumes, Elastic IPs, and VPCs; all should be empty.
+
+The bootstrap identity (IAM user `devops-crm-cli`, role `devops-crm-admin`) and the budget are not managed by Terraform. Delete them in the console when you no longer need the account.
 
 ## Design notes
 

@@ -8,7 +8,7 @@ One story from user action to production, observability, and recovery. Rehearse 
 export AWS_PROFILE=devops-crm AWS_REGION=ap-south-1
 aws eks update-kubeconfig --name devops-crm
 APP=http://$(kubectl -n crm get ingress crm -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-echo $APP; curl -s $APP/api/version
+echo $APP; curl -s $APP/api/version   # http://devops-crm-471212951.ap-south-1.elb.amazonaws.com while the stack exists
 
 kubectl -n monitoring port-forward svc/kps-grafana 3001:80 &       # Grafana
 kubectl -n monitoring port-forward svc/kps-prometheus 9090:9090 &  # Prometheus

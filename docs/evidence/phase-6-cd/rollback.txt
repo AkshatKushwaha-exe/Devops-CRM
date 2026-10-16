@@ -1,0 +1,34 @@
+# Rollback through the pipeline: Deploy workflow dispatched with the previous SHA abfe21f (run 38917509343)
+$ curl http://<alb>/api/version
+{"version":"abfe21f8e5803ad38984da6bcd913052a9fa426b"}
+
+$ helm -n crm history crm
+REVISION	UPDATED                 	STATUS    	CHART           	APP VERSION	DESCRIPTION     
+1       	Fri Oct 16 14:22:44 2026	superseded	devops-crm-0.1.0	0.1.0      	Install complete
+2       	Fri Oct 16 14:35:35 2026	superseded	devops-crm-0.1.0	0.1.0      	Upgrade complete
+3       	Fri Oct 16 14:39:50 2026	deployed  	devops-crm-0.1.0	0.1.0      	Upgrade complete
+
+$ kubectl -n crm logs job/crm-migrate-r3   # older image against the current schema
+Schema is already at head.
+
+$ kubectl -n crm get pods -o custom-columns=NAME,IMAGE
+NAME                            STATUS      IMAGE
+crm-backend-6bb7f7479f-6fwzp    Running     ghcr.io/akshatkushwaha-exe/devops-crm-backend:abfe21f8e5803ad38984da6bcd913052a9fa426b
+crm-backend-6bb7f7479f-krz5l    Running     ghcr.io/akshatkushwaha-exe/devops-crm-backend:abfe21f8e5803ad38984da6bcd913052a9fa426b
+crm-frontend-7b97b9bd7b-gzlm7   Running     ghcr.io/akshatkushwaha-exe/devops-crm-frontend:abfe21f8e5803ad38984da6bcd913052a9fa426b
+crm-frontend-7b97b9bd7b-j24f2   Running     ghcr.io/akshatkushwaha-exe/devops-crm-frontend:abfe21f8e5803ad38984da6bcd913052a9fa426b
+crm-migrate-r3-4xqtv            Succeeded   ghcr.io/akshatkushwaha-exe/devops-crm-backend:abfe21f8e5803ad38984da6bcd913052a9fa426b
+crm-postgres-0                  Running     postgres:18.6-alpine3.24
+
+$ curl http://<alb>/api/dashboard (data intact)
+{'total_contacts': 1, 'won_revenue': '120000.00', 'win_rate': 100.0}
+
+# Roll forward: Deploy workflow dispatched with 0dc37db (run 38917826279)
+$ curl http://<alb>/api/version
+{"version":"0dc37db33eefabf70ae19fad4d56ac8e063642cf","environment":"Production"}
+$ helm -n crm history crm
+REVISION	UPDATED                 	STATUS    	CHART           	APP VERSION	DESCRIPTION     
+1       	Fri Oct 16 14:22:44 2026	superseded	devops-crm-0.1.0	0.1.0      	Install complete
+2       	Fri Oct 16 14:35:35 2026	superseded	devops-crm-0.1.0	0.1.0      	Upgrade complete
+3       	Fri Oct 16 14:39:50 2026	superseded	devops-crm-0.1.0	0.1.0      	Upgrade complete
+4       	Fri Oct 16 14:42:10 2026	deployed  	devops-crm-0.1.0	0.1.0      	Upgrade complete
