@@ -1,0 +1,16 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+{{- range $component := list "backend" "frontend" }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "crm.fullname" $ }}-{{ $component }}
+  labels:
+    {{- include "crm.labels" (dict "ctx" $ "component" $component) | nindent 4 }}
+spec:
+  minAvailable: {{ $.Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "crm.componentSelector" (dict "ctx" $ "component" $component) | nindent 6 }}
+{{- end }}
+{{- end }}

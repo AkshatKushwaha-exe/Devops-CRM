@@ -1,0 +1,11 @@
+apiVersion: v2
+name: devops-crm
+description: DevOps CRM — React UI, FastAPI API, and PostgreSQL with explicit migrations
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/AkshatKushwaha-exe/Devops-CRM
+sources:
+  - https://github.com/AkshatKushwaha-exe/Devops-CRM
+maintainers:
+  - name: AkshatKushwaha-exe

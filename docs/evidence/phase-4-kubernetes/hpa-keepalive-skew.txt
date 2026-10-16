@@ -1,0 +1,92 @@
+15:14:00  cpu: cpu: <unknown>/60% replicas: 2
+    crm-backend-7ddb49bb77-572rj 31m 63Mi
+    crm-backend-7ddb49bb77-wg2qq 31m 63Mi
+15:14:15  cpu: cpu: <unknown>/60% replicas: 2
+    crm-backend-7ddb49bb77-572rj 31m 63Mi
+    crm-backend-7ddb49bb77-wg2qq 31m 63Mi
+15:14:30  cpu: cpu: <unknown>/60% replicas: 2
+    crm-backend-7ddb49bb77-572rj 31m 63Mi
+    crm-backend-7ddb49bb77-wg2qq 31m 63Mi
+15:14:45  cpu: cpu: 249%/60% replicas: 2
+    crm-backend-7ddb49bb77-572rj 282m 66Mi
+    crm-backend-7ddb49bb77-wg2qq 217m 64Mi
+15:15:00  cpu: cpu: 249%/60% replicas: 4
+    crm-backend-7ddb49bb77-572rj 282m 66Mi
+    crm-backend-7ddb49bb77-wg2qq 217m 64Mi
+15:15:15  cpu: cpu: 249%/60% replicas: 4
+    crm-backend-7ddb49bb77-572rj 282m 66Mi
+    crm-backend-7ddb49bb77-wg2qq 217m 64Mi
+15:15:30  cpu: cpu: 249%/60% replicas: 6
+    crm-backend-7ddb49bb77-572rj 282m 66Mi
+    crm-backend-7ddb49bb77-wg2qq 217m 64Mi
+15:15:45  cpu: cpu: 500%/60% replicas: 6
+    crm-backend-7ddb49bb77-4gttq 81m 63Mi
+    crm-backend-7ddb49bb77-572rj 500m 66Mi
+    crm-backend-7ddb49bb77-jqf4k 92m 63Mi
+    crm-backend-7ddb49bb77-jwsgv 25m 63Mi
+    crm-backend-7ddb49bb77-n7stx 28m 63Mi
+    crm-backend-7ddb49bb77-wg2qq 500m 66Mi
+15:16:00  cpu: cpu: 500%/60% replicas: 6
+    crm-backend-7ddb49bb77-4gttq 81m 63Mi
+    crm-backend-7ddb49bb77-572rj 500m 66Mi
+    crm-backend-7ddb49bb77-jqf4k 92m 63Mi
+    crm-backend-7ddb49bb77-jwsgv 25m 63Mi
+    crm-backend-7ddb49bb77-n7stx 28m 63Mi
+    crm-backend-7ddb49bb77-wg2qq 500m 66Mi
+15:16:16  cpu: cpu: 500%/60% replicas: 6
+    crm-backend-7ddb49bb77-4gttq 81m 63Mi
+    crm-backend-7ddb49bb77-572rj 500m 66Mi
+    crm-backend-7ddb49bb77-jqf4k 92m 63Mi
+    crm-backend-7ddb49bb77-jwsgv 25m 63Mi
+    crm-backend-7ddb49bb77-n7stx 28m 63Mi
+    crm-backend-7ddb49bb77-wg2qq 500m 66Mi
+15:16:31  cpu: cpu: 500%/60% replicas: 6
+    crm-backend-7ddb49bb77-4gttq 81m 63Mi
+    crm-backend-7ddb49bb77-572rj 500m 66Mi
+    crm-backend-7ddb49bb77-jqf4k 92m 63Mi
+    crm-backend-7ddb49bb77-jwsgv 25m 63Mi
+    crm-backend-7ddb49bb77-n7stx 28m 63Mi
+    crm-backend-7ddb49bb77-wg2qq 500m 66Mi
+15:16:46  cpu: cpu: 94%/60% replicas: 6
+    crm-backend-7ddb49bb77-4gttq 6m 63Mi
+    crm-backend-7ddb49bb77-572rj 274m 65Mi
+    crm-backend-7ddb49bb77-jqf4k 5m 63Mi
+    crm-backend-7ddb49bb77-jwsgv 4m 63Mi
+    crm-backend-7ddb49bb77-n7stx 5m 63Mi
+    crm-backend-7ddb49bb77-wg2qq 275m 64Mi
+15:17:01  cpu: cpu: 94%/60% replicas: 6
+    crm-backend-7ddb49bb77-4gttq 6m 63Mi
+    crm-backend-7ddb49bb77-572rj 274m 65Mi
+    crm-backend-7ddb49bb77-jqf4k 5m 63Mi
+    crm-backend-7ddb49bb77-jwsgv 4m 63Mi
+    crm-backend-7ddb49bb77-n7stx 5m 63Mi
+    crm-backend-7ddb49bb77-wg2qq 275m 64Mi
+15:17:16  cpu: cpu: 94%/60% replicas: 6
+    crm-backend-7ddb49bb77-4gttq 6m 63Mi
+    crm-backend-7ddb49bb77-572rj 274m 65Mi
+    crm-backend-7ddb49bb77-jqf4k 5m 63Mi
+    crm-backend-7ddb49bb77-jwsgv 4m 63Mi
+    crm-backend-7ddb49bb77-n7stx 5m 63Mi
+    crm-backend-7ddb49bb77-wg2qq 275m 64Mi
+15:17:31  cpu: cpu: 94%/60% replicas: 6
+    crm-backend-7ddb49bb77-4gttq 6m 63Mi
+    crm-backend-7ddb49bb77-572rj 274m 65Mi
+    crm-backend-7ddb49bb77-jqf4k 5m 63Mi
+    crm-backend-7ddb49bb77-jwsgv 4m 63Mi
+    crm-backend-7ddb49bb77-n7stx 5m 63Mi
+    crm-backend-7ddb49bb77-wg2qq 275m 64Mi
+15:17:46  cpu: cpu: 5%/60% replicas: 6
+    crm-backend-7ddb49bb77-4gttq 4m 63Mi
+    crm-backend-7ddb49bb77-572rj 7m 65Mi
+    crm-backend-7ddb49bb77-jqf4k 5m 63Mi
+    crm-backend-7ddb49bb77-jwsgv 5m 63Mi
+    crm-backend-7ddb49bb77-n7stx 5m 63Mi
+    crm-backend-7ddb49bb77-wg2qq 5m 64Mi
+{"ts":1792143838.406379,"level":"info","r":1,"file":"httprunner.go","line":121,"msg":"Starting http test","run":0,"url":"http://crm-backend:8000/api/dashboard","threads":16,"qps":"-1.0","warmup":"parallel","conn-reuse":""}
+Starting at max qps with 16 thread(s) [gomax 15] for 2m0s
+{"ts":1792143959.217465,"level":"info","r":138,"file":"periodic.go","line":851,"msg":"T008 ended after 2m0.010106888s : 3850 calls. qps=32.08063137209794"}
+{"ts":1792143959.218736,"level":"info","r":142,"file":"periodic.go","line":851,"msg":"T012 ended after 2m0.011483638s : 3860 calls. qps=32.16358870825411"}
+{"ts":1792143959.219736,"level":"info","r":139,"file":"periodic.go","line":851,"msg":"T009 ended after 2m0.01248418s : 3871 calls. qps=32.254977692104966"}
+{"ts":1792143959.221342,"level":"info","r":135,"file":"periodic.go","line":851,"msg":"T005 ended after 2m0.014090055s : 3869 calls. qps=32.237881387318076"}
+{"ts":1792143959.221847,"level":"info","r":134,"file":"periodic.go","line":851,"msg":"T004 ended after 2m0.014594972s : 3863 calls. qps=32.18775183885974"}
+{"ts":1792143959.257602,"level":"info","r":143,"file":"periodic.go","line":851,"msg":"T013 ended after 2m0.050347097s : 1313 calls. qps=10.937077915644037"}

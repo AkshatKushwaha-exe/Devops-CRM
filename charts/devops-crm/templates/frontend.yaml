@@ -1,0 +1,107 @@
+{{- $f := .Values.frontend }}
+{{- $fullname := include "crm.fullname" . }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-frontend
+  labels:
+    {{- include "crm.labels" (dict "ctx" $ "component" "frontend") | nindent 4 }}
+  {{- with $f.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "crm.componentSelector" (dict "ctx" $ "component" "frontend") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ $f.service.port }}
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-frontend
+  labels:
+    {{- include "crm.labels" (dict "ctx" $ "component" "frontend") | nindent 4 }}
+spec:
+  {{- if not $f.autoscaling.enabled }}
+  replicas: {{ $f.replicas }}
+  {{- end }}
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels:
+      {{- include "crm.componentSelector" (dict "ctx" $ "component" "frontend") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "crm.componentSelector" (dict "ctx" $ "component" "frontend") | nindent 8 }}
+        app.kubernetes.io/version: {{ include "crm.tag" (dict "ctx" $ "image" $f.image) | quote }}
+      {{- with $f.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- include "crm.podSecurityContext" . | nindent 8 }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "crm.componentSelector" (dict "ctx" $ "component" "frontend") | nindent 14 }}
+      {{- with $f.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $f.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: web
+          image: {{ include "crm.image" (dict "ctx" $ "image" $f.image) }}
+          imagePullPolicy: {{ $f.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+          lifecycle:
+            # Keep serving while the endpoint is removed from Services and the Ingress,
+            # so a pod being replaced never receives traffic after it stops listening.
+            preStop:
+              sleep:
+                seconds: 5
+          env:
+            # Nginx proxies same-origin /api/ calls (port-forward, Compose parity) to the API.
+            - name: API_UPSTREAM
+              value: "{{ $fullname }}-backend:{{ .Values.backend.service.port }}"
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 5
+          resources:
+            {{- toYaml $f.resources | nindent 12 }}
+          securityContext:
+            {{- include "crm.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            # Nginx renders its site config here at start and keeps pid/temp files in /tmp.
+            - name: nginx-conf
+              mountPath: /etc/nginx/conf.d
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: nginx-conf
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}

@@ -1,0 +1,12 @@
+# minikube (docker driver, arm64) with the ingress, metrics-server, and
+# storage-provisioner-rancher addons. Install with:
+#   helm upgrade --install crm charts/devops-crm -n crm --create-namespace \
+#     -f charts/devops-crm/values-local.yaml --set imageTag=<commit-sha>
+ingress:
+  className: nginx
+postgresql:
+  persistence:
+    # local-path pins the volume to the node it was created on, unlike minikube's
+    # default hostPath provisioner, which does not survive rescheduling across nodes.
+    storageClass: local-path
+    size: 2Gi

@@ -1,0 +1,48 @@
+{{- if .Values.migrations.enabled }}
+{{- $m := .Values.migrations }}
+# A new Job per Helm revision: every install, upgrade, and rollback applies migrations explicitly.
+# API pods wait (init container) until the schema is at head before they start serving.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "crm.fullname" . }}-migrate-r{{ .Release.Revision }}
+  labels:
+    {{- include "crm.labels" (dict "ctx" $ "component" "migrate") | nindent 4 }}
+spec:
+  backoffLimit: {{ $m.backoffLimit }}
+  activeDeadlineSeconds: {{ add $m.timeoutSeconds 120 }}
+  ttlSecondsAfterFinished: {{ $m.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "crm.componentSelector" (dict "ctx" $ "component" "migrate") | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- include "crm.podSecurityContext" . | nindent 8 }}
+      {{- with .Values.backend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: migrate
+          image: {{ include "crm.image" (dict "ctx" $ "image" .Values.backend.image) }}
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          command: ["python", "-m", "app.migrate", "upgrade", "--timeout", "{{ $m.timeoutSeconds }}"]
+          env:
+            {{- include "crm.backendEnv" . | nindent 12 }}
+          resources:
+            {{- toYaml $m.resources | nindent 12 }}
+          securityContext:
+            {{- include "crm.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

@@ -1,0 +1,123 @@
+# Default values for the DevOps CRM. Environment overrides live next to this chart:
+# values-local.yaml (minikube) and values-eks.yaml (AWS).
+
+# Image tag shared by the backend, migration job, and frontend. CD sets this to the commit SHA.
+imageTag: ""
+
+imagePullSecrets: []
+
+backend:
+  image:
+    repository: ghcr.io/akshatkushwaha-exe/devops-crm-backend
+    tag: "" # defaults to .Values.imageTag
+    pullPolicy: IfNotPresent
+  replicas: 2 # used only when autoscaling is disabled
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 256Mi }
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 60
+  service:
+    port: 8000
+    annotations: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+
+frontend:
+  image:
+    repository: ghcr.io/akshatkushwaha-exe/devops-crm-frontend
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests: { cpu: 50m, memory: 32Mi }
+    limits: { cpu: 250m, memory: 64Mi }
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
+  service:
+    port: 80
+    annotations: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+
+migrations:
+  # A Job named <release>-migrate-r<revision> runs `python -m app.migrate upgrade` on every
+  # install/upgrade; API pods wait in an init container until the schema is at head.
+  enabled: true
+  timeoutSeconds: 300
+  backoffLimit: 6
+  ttlSecondsAfterFinished: 86400
+  resources:
+    requests: { cpu: 50m, memory: 96Mi }
+    limits: { cpu: 500m, memory: 256Mi }
+
+postgresql:
+  # In-cluster PostgreSQL with persistent storage. Set enabled=false and
+  # externalDatabase.existingSecret to use a managed database (e.g. Amazon RDS) instead.
+  enabled: true
+  image:
+    repository: postgres
+    tag: 18.6-alpine3.24
+    pullPolicy: IfNotPresent
+  auth:
+    database: crm
+    username: crm
+    # Leave empty to generate a random password once; it is reused on every upgrade.
+    password: ""
+    # Use a pre-created Secret with POSTGRES_PASSWORD and DATABASE_URL keys instead.
+    existingSecret: ""
+  persistence:
+    size: 5Gi
+    storageClass: "" # cluster default when empty
+    accessModes: [ReadWriteOnce]
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: "1", memory: 512Mi }
+  nodeSelector: {}
+  tolerations: []
+
+externalDatabase:
+  # Secret holding DATABASE_URL (SQLAlchemy URL) when postgresql.enabled=false.
+  existingSecret: ""
+
+ingress:
+  enabled: true
+  className: nginx
+  host: "" # empty matches any host
+  annotations: {}
+  tls: []
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+metrics:
+  serviceMonitor:
+    # Requires the Prometheus Operator CRDs (kube-prometheus-stack).
+    enabled: false
+    interval: 15s
+    labels: {}
+  dashboard:
+    # Grafana dashboard ConfigMap picked up by the kube-prometheus-stack sidecar.
+    enabled: false
+    labels:
+      grafana_dashboard: "1"
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]

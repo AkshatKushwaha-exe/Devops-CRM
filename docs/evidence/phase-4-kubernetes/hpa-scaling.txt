@@ -1,0 +1,87 @@
+# HPA scaling under controlled load (k8s/load-test.yaml: fortio, 16 connections, keepalive off, 120 s)
+$ kubectl -n crm apply -f k8s/load-test.yaml
+job.batch/crm-load-test created
+15:23:58  cpu: 7%/60% replicas=2
+    crm-backend-7ddb49bb77-572rj     cpu=8m
+    crm-backend-7ddb49bb77-n7stx     cpu=7m
+15:24:13  cpu: 7%/60% replicas=2
+    crm-backend-7ddb49bb77-572rj     cpu=8m
+    crm-backend-7ddb49bb77-n7stx     cpu=7m
+15:24:28  cpu: 7%/60% replicas=2
+    crm-backend-7ddb49bb77-572rj     cpu=8m
+    crm-backend-7ddb49bb77-n7stx     cpu=7m
+15:24:43  cpu: 282%/60% replicas=2
+    crm-backend-7ddb49bb77-572rj     cpu=332m
+    crm-backend-7ddb49bb77-n7stx     cpu=232m
+15:24:58  cpu: 282%/60% replicas=4
+    crm-backend-7ddb49bb77-572rj     cpu=332m
+    crm-backend-7ddb49bb77-n7stx     cpu=232m
+15:25:14  cpu: 282%/60% replicas=4
+    crm-backend-7ddb49bb77-572rj     cpu=332m
+    crm-backend-7ddb49bb77-n7stx     cpu=232m
+15:25:29  cpu: 282%/60% replicas=6
+    crm-backend-7ddb49bb77-572rj     cpu=332m
+    crm-backend-7ddb49bb77-n7stx     cpu=232m
+15:25:44  cpu: 367%/60% replicas=6
+    crm-backend-7ddb49bb77-572rj     cpu=385m
+    crm-backend-7ddb49bb77-bxbzl     cpu=320m
+    crm-backend-7ddb49bb77-frcqn     cpu=298m
+    crm-backend-7ddb49bb77-n7stx     cpu=349m
+    crm-backend-7ddb49bb77-tq96v     cpu=317m
+    crm-backend-7ddb49bb77-zqwcd     cpu=298m
+15:25:59  cpu: 367%/60% replicas=6
+    crm-backend-7ddb49bb77-572rj     cpu=385m
+    crm-backend-7ddb49bb77-bxbzl     cpu=320m
+    crm-backend-7ddb49bb77-frcqn     cpu=298m
+    crm-backend-7ddb49bb77-n7stx     cpu=349m
+    crm-backend-7ddb49bb77-tq96v     cpu=317m
+    crm-backend-7ddb49bb77-zqwcd     cpu=298m
+15:26:14  cpu: 367%/60% replicas=6
+    crm-backend-7ddb49bb77-572rj     cpu=385m
+    crm-backend-7ddb49bb77-bxbzl     cpu=320m
+    crm-backend-7ddb49bb77-frcqn     cpu=298m
+    crm-backend-7ddb49bb77-n7stx     cpu=349m
+    crm-backend-7ddb49bb77-tq96v     cpu=317m
+    crm-backend-7ddb49bb77-zqwcd     cpu=298m
+15:26:29  cpu: 367%/60% replicas=6
+    crm-backend-7ddb49bb77-572rj     cpu=385m
+    crm-backend-7ddb49bb77-bxbzl     cpu=320m
+    crm-backend-7ddb49bb77-frcqn     cpu=298m
+    crm-backend-7ddb49bb77-n7stx     cpu=349m
+    crm-backend-7ddb49bb77-tq96v     cpu=317m
+    crm-backend-7ddb49bb77-zqwcd     cpu=298m
+15:26:44  cpu: 96%/60% replicas=6
+    crm-backend-7ddb49bb77-572rj     cpu=99m
+    crm-backend-7ddb49bb77-bxbzl     cpu=93m
+    crm-backend-7ddb49bb77-frcqn     cpu=108m
+    crm-backend-7ddb49bb77-n7stx     cpu=100m
+    crm-backend-7ddb49bb77-tq96v     cpu=73m
+    crm-backend-7ddb49bb77-zqwcd     cpu=107m
+15:26:59  cpu: 96%/60% replicas=6
+    crm-backend-7ddb49bb77-572rj     cpu=99m
+    crm-backend-7ddb49bb77-bxbzl     cpu=93m
+    crm-backend-7ddb49bb77-frcqn     cpu=108m
+    crm-backend-7ddb49bb77-n7stx     cpu=100m
+    crm-backend-7ddb49bb77-tq96v     cpu=73m
+    crm-backend-7ddb49bb77-zqwcd     cpu=107m
+
+$ kubectl -n crm logs job/crm-load-test (summary)
+Ended after 2m0.048869597s : 32801 calls. qps=273.23
+# target 50% 0.00898299
+# target 90% 0.18034
+# target 99% 0.352105
+# target 50% 0.000508545
+# target 90% 0.000903538
+Code 200 : 32801 (100.0 %)
+
+$ kubectl -n crm describe hpa crm-backend   # events: scale up under load, gradual scale down after
+Events:
+  Type     Reason                        Age                  From                       Message
+  ----     ------                        ----                 ----                       -------
+  Normal   SuccessfulRescale             19m                  horizontal-pod-autoscaler  New size: 2; reason: Current number of replicas below Spec.MinReplicas
+  Normal   SuccessfulRescale             8m1s (x2 over 18m)   horizontal-pod-autoscaler  New size: 4; reason: cpu resource utilization (percentage of request) above target
+  Normal   SuccessfulRescale             7m31s (x2 over 17m)  horizontal-pod-autoscaler  New size: 6; reason: cpu resource utilization (percentage of request) above target
+  Normal   SuccessfulRescale             3m16s (x2 over 13m)  horizontal-pod-autoscaler  New size: 5; reason: All metrics below target
+  Normal   SuccessfulRescale             2m16s (x2 over 12m)  horizontal-pod-autoscaler  New size: 4; reason: All metrics below target
+  Normal   SuccessfulRescale             76s (x2 over 11m)    horizontal-pod-autoscaler  New size: 3; reason: All metrics below target
+  Normal   SuccessfulRescale             16s (x2 over 10m)    horizontal-pod-autoscaler  New size: 2; reason: All metrics below target
