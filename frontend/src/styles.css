@@ -13,10 +13,10 @@
   --muted: #819087;
   --border: #e7ebe5;
   /* Brand accent: sidebar, primary actions, and their hover states. */
-  --sidebar: #173e32;
-  --sidebar-hover: #285140;
-  --accent: #2c624a;
-  --accent-hover: #214e39;
+  --sidebar: #1f2a5c;
+  --sidebar-hover: #2d3b7a;
+  --accent: #4338ca;
+  --accent-hover: #3730a3;
 }
 * {
   box-sizing: border-box;
