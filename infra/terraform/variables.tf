@@ -29,9 +29,9 @@ variable "node_instance_types" {
 }
 
 variable "node_count" {
-  description = "Desired/minimum/maximum worker nodes."
+  description = "Desired/minimum/maximum worker nodes. New accounts get a 5 vCPU on-demand quota, so the default stops at 2 × t4g.large (4 vCPU); raise max after a quota increase."
   type        = object({ desired = number, min = number, max = number })
-  default     = { desired = 2, min = 2, max = 3 }
+  default     = { desired = 2, min = 2, max = 2 }
 }
 
 variable "cluster_endpoint_public_access_cidrs" {

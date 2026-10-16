@@ -1,0 +1,22 @@
+$ pnpm test
+> devops-crm-frontend@0.1.0 test /Users/akshat/personal/devops/21-final-project/frontend
+> vitest run
+ RUN  v4.1.12 /Users/akshat/personal/devops/21-final-project/frontend
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  18:34:49
+   Duration  1.70s (transform 82ms, setup 164ms, import 168ms, tests 883ms, environment 393ms)
+
+$ pnpm test:e2e
+> devops-crm-frontend@0.1.0 test:e2e /Users/akshat/personal/devops/21-final-project/frontend
+> playwright test --reporter=list
+Running 2 tests using 1 worker
+  ✓  1 [chromium] › e2e/crm.spec.ts:3:1 › contact to won deal, persistence, deletion protection, and cleanup (2.1s)
+  ✓  2 [chromium] › e2e/crm.spec.ts:74:1 › mobile navigation and dialog keyboard dismissal (855ms)
+  2 passed (5.3s)
+
+$ pnpm build
+dist/assets/index-eKwrjOmG.css                        25.25 kB │ gzip:  6.47 kB
+dist/assets/index-CAx7xtdD.js                        256.81 kB │ gzip: 78.89 kB
+
+✓ built in 218ms
