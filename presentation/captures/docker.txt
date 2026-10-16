@@ -1,0 +1,24 @@
+$ docker compose up --build -d
+ Image devops-crm-backend:local Built 
+ Image devops-crm-frontend:local Built 
+ Container devops-crm-db-1 Running 
+ Container devops-crm-db-1 Healthy 
+ Container devops-crm-migrate-1 Started 
+ Container devops-crm-migrate-1 Exited 
+ Container devops-crm-backend-1 Started 
+ Container devops-crm-backend-1 Healthy 
+ Container devops-crm-frontend-1 Started 
+
+$ docker compose ps -a
+SERVICE    IMAGE                       STATUS                                     PORTS
+backend    devops-crm-backend:local    Up 5 seconds (healthy)                     8000/tcp
+db         postgres:18.6-alpine3.24    Up 8 hours (healthy)                       5432/tcp
+frontend   devops-crm-frontend:local   Up Less than a second (health: starting)   0.0.0.0:3000->8080/tcp, [::]:3000->8080/tcp
+migrate    devops-crm-backend:local    Exited (0) 6 seconds ago                   
+
+$ docker compose exec backend id && docker compose exec frontend id
+uid=10001(crm) gid=10001(crm) groups=10001(crm)
+uid=101(nginx) gid=101(nginx) groups=101(nginx)
+
+$ curl -s localhost:3000/api/version
+{"version":"dev","environment":"Docker Compose"}

@@ -9,11 +9,14 @@
   background: #f7f8f5;
   font-synthesis: none;
   font-size: 14px;
-  --green: #245b46;
   --ink: #263a31;
   --muted: #819087;
   --border: #e7ebe5;
+  /* Brand accent: sidebar, primary actions, and their hover states. */
   --sidebar: #173e32;
+  --sidebar-hover: #285140;
+  --accent: #2c624a;
+  --accent-hover: #214e39;
 }
 * {
   box-sizing: border-box;
@@ -221,7 +224,7 @@ fieldset {
     color 0.15s;
 }
 .sidebar nav a:hover {
-  background: #285140;
+  background: var(--sidebar-hover);
   color: white;
 }
 .sidebar nav a.active {
@@ -435,11 +438,11 @@ h1 > span {
 }
 .button.primary {
   color: #fff;
-  background: #2c624a;
+  background: var(--accent);
   box-shadow: 0 3px 5px #1b412513;
 }
 .button.primary:hover {
-  background: #214e39;
+  background: var(--accent-hover);
 }
 .button.secondary {
   background: #fff;
