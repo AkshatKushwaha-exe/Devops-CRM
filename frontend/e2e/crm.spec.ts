@@ -35,13 +35,13 @@ test("contact to won deal, persistence, deletion protection, and cleanup", async
   await expect(
     page
       .getByRole("region", { name: "Won deals", exact: true })
-      .getByText("Browser Test Opportunity"),
+      .getByRole("button", { name: "Browser Test Opportunity", exact: true }),
   ).toBeVisible();
   await page.reload();
   await expect(
     page
       .getByRole("region", { name: "Won deals", exact: true })
-      .getByText("Browser Test Opportunity"),
+      .getByRole("button", { name: "Browser Test Opportunity", exact: true }),
   ).toBeVisible();
 
   await page.getByRole("link", { name: "Overview", exact: true }).click();

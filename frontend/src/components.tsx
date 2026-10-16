@@ -160,8 +160,12 @@ export function Modal({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
-    ref.current?.showModal();
-    return () => ref.current?.close();
+    const dialog = ref.current;
+    dialog?.showModal();
+    // showModal() focuses the first focusable element (the close button), so move
+    // focus to the field a form marks with data-autofocus once the dialog is open.
+    dialog?.querySelector<HTMLElement>("[data-autofocus]")?.focus();
+    return () => dialog?.close();
   }, []);
   return (
     <dialog

@@ -87,7 +87,7 @@ export default function DealForm({
             <label className="full">
               Deal title <span>*</span>
               <input
-                autoFocus
+                data-autofocus
                 required
                 maxLength={160}
                 value={form.title}

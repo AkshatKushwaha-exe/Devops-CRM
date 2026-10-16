@@ -98,7 +98,14 @@ pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
-See [validation status](docs/VALIDATION.md) for what was actually executed in the build environment.
+Capture desktop and mobile screenshots of any running instance (local, Compose, Kubernetes, or AWS):
+
+```bash
+cd frontend
+node scripts/capture-screenshots.mjs http://127.0.0.1:3000 ../docs/evidence/<name>
+```
+
+See the [validation record](docs/VALIDATION.md) for every check that was executed, including the PostgreSQL runtime verification, restart persistence, and screenshots.
 
 ## Data rules
 
@@ -119,18 +126,7 @@ backend/alembic/         Versioned schema migration
 backend/tests/           API, business-rule, and migration tests
 frontend/src/            React screens, components, styling, component tests
 frontend/e2e/            Browser workflows
-scripts/                 Local launch, database helper, and commit helper
-docs/                    Architecture, API map, and validation record
+frontend/scripts/        Evidence screenshot capture
+scripts/                 Local launch and database helper, browser-test server
+docs/                    Architecture, API map, validation record, evidence screenshots
 ```
-
-## Local commit history
-
-The requested identity is `AkshatKushwaha-exe`, with the email already configured on this machine, `akshatkushwaha0609@gmail.com`. No co-author trailers are added.
-
-The build environment prohibits writes to this workspace's `.git` directory, so it could not create actual commits. To create **eight focused local commits** from this completed workspace, run:
-
-```bash
-bash scripts/commit-local.sh
-```
-
-The helper initializes `main`, sets the supplied repository as `origin`, and commits explicit groups of files. It refuses an existing commit history or staged changes. It never pushes, rewrites history, or deploys. If the remote already contains commits, inspect and reconcile that history before a later push; remote contents were not accessible during this build.

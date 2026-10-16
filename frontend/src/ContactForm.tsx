@@ -68,7 +68,7 @@ export default function ContactForm({
             <label>
               Full name <span>*</span>
               <input
-                autoFocus
+                data-autofocus
                 required
                 maxLength={120}
                 value={form.name}
