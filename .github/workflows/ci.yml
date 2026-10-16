@@ -1,4 +1,4 @@
-# Tests and lint → frontend build → build both images → Trivy gate → publish to GHCR.
+# Tests and lint → frontend build → build both images → Trivy gate → publish to GHCR → deploy.
 # Pull requests run everything except publishing. Pushes to main publish images tagged with
 # the full commit SHA, so every deployed image traces back to a tested, scanned commit.
 name: CI
@@ -346,3 +346,16 @@ jobs:
           subject-name: ${{ steps.push.outputs.frontend_name }}
           subject-digest: ${{ steps.push.outputs.frontend_digest }}
           push-to-registry: false # stored in GitHub; keeps GHCR tags to commit SHAs only
+
+  deploy:
+    name: Deploy to EKS
+    needs: publish
+    # Continuous deployment of the exact SHA just published. Skipped until the AWS
+    # infrastructure exists and the repository variable AWS_DEPLOY_ROLE_ARN is set.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AWS_DEPLOY_ROLE_ARN != ''
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      image-tag: ${{ github.sha }}

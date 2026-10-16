@@ -16,6 +16,7 @@ import Contacts from "./Contacts";
 import DealForm from "./DealForm";
 import Overview from "./Overview";
 import Pipeline from "./Pipeline";
+import { useResource } from "./hooks";
 import type { Deal } from "./types";
 
 const navigation = [
@@ -31,6 +32,7 @@ function currentPage() {
 
 export default function App() {
   const [page, setPage] = useState(currentPage);
+  const build = useResource<{ version: string }>("/version").data?.version;
   const [version, setVersion] = useState(0);
   const [toast, setToast] = useState("");
   const [menu, setMenu] = useState(false);
@@ -175,7 +177,15 @@ export default function App() {
           )}
           {page === "activity" && <Activity version={version} />}
           <footer className="workspace-footer">
-            <span>DevOps CRM</span>
+            <span>
+              DevOps CRM
+              {build && (
+                <span className="build-tag" title={`Build ${build}`}>
+                  {" "}
+                  · build {build.slice(0, 7)}
+                </span>
+              )}
+            </span>
             <span>Good relationships. Better business.</span>
           </footer>
         </main>

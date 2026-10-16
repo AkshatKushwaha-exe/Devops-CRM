@@ -943,6 +943,10 @@ tbody tr:hover {
   font-family: "Manrope", sans-serif;
   font-weight: 700;
 }
+.workspace-footer .build-tag {
+  font-family: "DM Sans", sans-serif;
+  font-weight: 500;
+}
 .panel-toolbar {
   display: flex;
   align-items: center;
