@@ -28,7 +28,7 @@ aws sts get-caller-identity          # confirm the account before creating anyth
 ## Create
 
 ```bash
-cd infra/terraform
+cd terraform
 cp terraform.tfvars.example terraform.tfvars   # optional; defaults match the example
 terraform init
 terraform plan -out tfplan
@@ -37,7 +37,7 @@ $(terraform output -raw kubeconfig_command)     # aws eks update-kubeconfig …
 kubectl get nodes -o wide
 ```
 
-Then connect CD (see [OPERATIONS.md](../../docs/OPERATIONS.md)). These are repository variables, not secrets: the role can only be assumed by this repository's `production` environment through OIDC.
+Then connect CD (see [OPERATIONS.md](../docs/OPERATIONS.md)). These are repository variables, not secrets: the role can only be assumed by this repository's `production` environment through OIDC.
 
 ```bash
 gh variable set AWS_DEPLOY_ROLE_ARN --body "$(terraform output -raw github_deploy_role_arn)"

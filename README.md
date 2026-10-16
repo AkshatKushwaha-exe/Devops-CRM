@@ -30,7 +30,7 @@ Prerequisite: Docker with Compose v2. From a fresh checkout:
 docker compose up --build
 ```
 
-Open **http://localhost:8080** (API reference at http://localhost:8080/api/docs). Startup is ordered by health checks:
+Open **http://localhost:3000** (API reference at http://localhost:3000/api/docs). Startup is ordered by health checks:
 
 | Service | Image | Role |
 |---|---|---|
@@ -80,7 +80,7 @@ Rollback procedure, database considerations, and setup: [docs/OPERATIONS.md](doc
 
 ## Deploy to Kubernetes with Helm
 
-The chart in [`charts/devops-crm`](charts/devops-crm) installs:
+The chart in [`helm/devops-crm`](helm/devops-crm) installs:
 
 | Resource | Details |
 |---|---|
@@ -103,8 +103,8 @@ minikube addons enable ingress
 minikube addons enable storage-provisioner-rancher   # node-pinned local-path volumes
 
 SHA=$(git rev-parse origin/main)   # any commit published by CI
-helm upgrade --install crm charts/devops-crm -n crm --create-namespace \
-  -f charts/devops-crm/values-local.yaml --set imageTag=$SHA --wait
+helm upgrade --install crm helm/devops-crm -n crm --create-namespace \
+  -f helm/devops-crm/values-local.yaml --set imageTag=$SHA --wait
 helm test crm -n crm
 
 kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 8088:80
@@ -232,10 +232,10 @@ backend/tests/           API, business-rule, and migration tests
 backend/Dockerfile       API image (Alpine, non-root)
 frontend/Dockerfile      UI image (Vite build → unprivileged Nginx)
 frontend/nginx/          Nginx site template: static UI, /api proxy, /healthz
-compose.yaml             PostgreSQL, migration step, API, and UI
+docker-compose.yml       PostgreSQL, migration step, API, and UI
 .github/workflows/       CI: tests → build → scan → publish
-charts/devops-crm/       Helm chart (values-local.yaml for minikube, values-eks.yaml for AWS)
-infra/terraform/         VPC, EKS, node group, controllers, GitHub OIDC deploy role
+helm/devops-crm/         Helm chart (values-local.yaml for minikube, values-eks.yaml for AWS)
+terraform/               VPC, EKS, node group, controllers, GitHub OIDC deploy role
 k8s/                     Load test and troubleshooting exercises
 monitoring/              kube-prometheus-stack values (scripts/install-monitoring.sh)
 frontend/src/            React screens, components, styling, component tests

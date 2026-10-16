@@ -21,7 +21,7 @@ helm upgrade --install kube-prometheus-stack kube-prometheus-stack \
 
 # The app chart renders its ServiceMonitor only once the CRDs exist: re-apply it.
 if helm -n crm status crm >/dev/null 2>&1; then
-  helm -n crm upgrade crm charts/devops-crm --reset-then-reuse-values --wait --timeout 10m
+  helm -n crm upgrade crm helm/devops-crm --reset-then-reuse-values --wait --timeout 10m
 fi
 
 cat <<MSG

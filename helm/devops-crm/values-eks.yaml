@@ -1,4 +1,4 @@
-# Amazon EKS (infra/terraform): AWS Load Balancer Controller + EBS CSI driver.
+# Amazon EKS (terraform/): AWS Load Balancer Controller + EBS CSI driver.
 # CD installs with: --set imageTag=<commit-sha>
 environment: Production
 
@@ -23,5 +23,5 @@ backend:
 
 postgresql:
   persistence:
-    storageClass: gp3 # encrypted EBS, created by infra/terraform
+    storageClass: gp3 # encrypted EBS, created by terraform/
     size: 10Gi

@@ -24,7 +24,7 @@ ENV PATH="/opt/venv/bin:${PATH}" \
 # Remove pip from the runtime image: the app runs from /opt/venv and never installs packages.
 RUN addgroup -S -g 10001 crm \
     && adduser -S -D -H -u 10001 -G crm -s /sbin/nologin crm \
-    && python -m pip uninstall -y pip
+    && python -m pip uninstall -y --root-user-action=ignore pip
 WORKDIR /app
 COPY --from=build /opt/venv /opt/venv
 COPY alembic.ini ./
