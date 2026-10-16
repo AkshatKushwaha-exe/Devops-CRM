@@ -1,0 +1,27 @@
+$ kubectl -n crm get pods -o wide
+NAME                            READY   STATUS      RESTARTS   AGE    IP             NODE                                          NOMINATED NODE   READINESS GATES
+crm-backend-b6f79ff9b-2fsqn     1/1     Running     0          91s    10.20.47.50    ip-10-20-37-143.ap-south-1.compute.internal   <none>           1/1
+crm-backend-b6f79ff9b-mc9sp     1/1     Running     0          60s    10.20.37.141   ip-10-20-37-143.ap-south-1.compute.internal   <none>           1/1
+crm-frontend-7f5c7c75bb-n6q9q   1/1     Running     0          91s    10.20.21.17    ip-10-20-21-55.ap-south-1.compute.internal    <none>           1/1
+crm-frontend-7f5c7c75bb-rqn84   1/1     Running     0          69s    10.20.34.150   ip-10-20-37-143.ap-south-1.compute.internal   <none>           1/1
+crm-migrate-r9-8sdmd            0/1     Completed   0          89s    10.20.45.144   ip-10-20-37-143.ap-south-1.compute.internal   <none>           <none>
+crm-postgres-0                  1/1     Running     0          3h7m   10.20.27.105   ip-10-20-21-55.ap-south-1.compute.internal    <none>           <none>
+
+$ kubectl -n crm get svc
+NAME           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+crm-backend    ClusterIP   172.20.95.123    <none>        8000/TCP   3h7m
+crm-frontend   ClusterIP   172.20.85.86     <none>        80/TCP     3h7m
+crm-postgres   ClusterIP   172.20.147.151   <none>        5432/TCP   3h7m
+
+$ kubectl -n crm get ingress
+NAME   CLASS   HOSTS   ADDRESS                                             PORTS   AGE
+crm    alb     *       devops-crm-471212951.ap-south-1.elb.amazonaws.com   80      3h7m
+
+$ kubectl -n crm get hpa
+NAME          REFERENCE                TARGETS       MINPODS   MAXPODS   REPLICAS   AGE
+crm-backend   Deployment/crm-backend   cpu: 4%/60%   2         6         2          3h7m
+
+$ helm list -n crm
+NAME	NAMESPACE	REVISION	UPDATED                                	STATUS  	CHART           	APP VERSION
+crm 	crm      	9       	2026-10-16 17:28:33.138298835 +0000 UTC	deployed	devops-crm-0.1.0	0.1.0      
+

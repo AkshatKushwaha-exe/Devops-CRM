@@ -1,0 +1,47 @@
+$ git rev-list --count --no-merges main
+28
+
+$ git log --oneline main
+58aa0c1 Merge pull request #16: add the presentation video
+5402c89 docs: add the presentation video and live-demo evidence
+c96a4a0 chore: remove the presentation scripts
+104715a Merge: switch the brand accent from green to indigo
+25c7045 feat: switch the brand accent from green to indigo
+59cfe59 Merge pull request #13: presentation video tooling
+0551f4a feat: generate the narrated presentation video from code
+cb2225f Merge pull request #12: align repository layout with the capstone rubric
+d5e8294 chore: ignore extension-less Terraform plan files
+fb54809 chore: align repository layout with the capstone rubric
+679c471 Merge pull request #11: AWS evidence and teardown script
+d07ea46 docs: record live EKS deployment, CD, rollback, and monitoring
+0dc37db Merge pull request #10: deploy to EKS with OIDC fix and environment label
+a782d1e feat: show the deployment environment in the workspace label
+b546f44 docs: record Terraform provisioning and first EKS deployment
+1f52fff fix: trust GitHub's immutable OIDC subject for the deploy role
+abfe21f Merge pull request #9: Free Tier x86 nodes and multi-arch images
+28f91bd fix: run Free Tier x86 nodes and publish multi-arch images
+17bead5 fix: limit EKS control-plane logging to stay within credits
+263c288 Merge pull request #8: submission evidence index and demo script
+b3a56e6 Merge pull request #7: monitoring, alerts, and troubleshooting drills
+059e33f docs: map requirements to evidence and script the demo
+8a4f728 feat: add Prometheus, Grafana dashboard, alerts, and failure drills
+b74afac Merge pull request #6: continuous deployment to EKS with rollback
+9b7e005 Merge pull request #5: provision AWS with Terraform
+e1ab88b Merge pull request #4: Helm chart validated on local Kubernetes
+e45e1f6 feat: deploy each published SHA to EKS with rollback
+bb6a0e2 feat: provision VPC, EKS, and node group with Terraform
+4cfce51 feat: add Helm chart validated on a local Kubernetes cluster
+014afef Merge pull request #3: CI with Trivy gate and GHCR publishing
+309aa60 ci: test, build, scan, and publish SHA-tagged images to GHCR
+eb1dd28 Merge pull request #2: containerize the CRM
+eaec9d1 Merge pull request #1: verify CRM against PostgreSQL
+7851b78 feat: containerize API and UI with explicit migration step
+22a2ccf fix: focus first dialog field and verify CRM against PostgreSQL
+7131429 test: cover CRM workflows and document local development
+3a24765 feat: connect workspace navigation to dashboard and activity views
+e499600 feat: build searchable contacts and editable sales pipeline
+cf57b41 feat: create responsive CRM design system and API client
+94abc34 feat: implement deal stages and live CRM dashboard aggregates
+c51dfc0 feat: add validated contact management and activity recording
+aa4a360 feat: model contacts and sales opportunities with Alembic migrations
+7a21247 chore: initialize CRM workspace and lock application dependencies
