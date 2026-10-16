@@ -6,7 +6,7 @@ Provisions everything the CRM needs on AWS in **ap-south-1**:
 |---|---|
 | Network | VPC `10.20.0.0/16` across 2 AZs; public subnets (`/24`, tagged for internet-facing ALBs) and private subnets (`/20`, nodes); internet gateway; one NAT gateway |
 | Cluster | EKS 1.36 with the API authentication mode (access entries); public endpoint (CIDR-restrictable); KMS-encrypted secrets |
-| Compute | Managed node group: 2 × `t4g.large` (Graviton, arm64, AL2023) in private subnets, scalable to 3; encrypted 30 GiB gp3 root volumes |
+| Compute | Managed node group: 2 × `t4g.large` (Graviton, arm64, AL2023) in private subnets; encrypted 30 GiB gp3 root volumes. Capped at 2 nodes because new accounts have a 5 vCPU on-demand quota |
 | Add-ons | `vpc-cni`, `kube-proxy`, `coredns`, `eks-pod-identity-agent`, `metrics-server` (HPA), `aws-ebs-csi-driver` (Pod Identity) |
 | Ingress | AWS Load Balancer Controller (Helm, Pod Identity) → the chart's `alb` Ingress becomes an internet-facing ALB with IP targets |
 | Storage | Default `gp3` StorageClass (encrypted EBS, `WaitForFirstConsumer`, expandable) for the PostgreSQL volume |
@@ -59,7 +59,7 @@ Approximate on-demand prices in ap-south-1 while the stack exists (about $0.33/h
 | ALB (created by the app's Ingress) | 0.025 + LCUs |
 | Public IPv4 addresses, EBS volumes | ~0.02 |
 
-**Tear down after evaluation.**
+**Tear down after evaluation.** On an AWS *free account plan*, the account closes when the $100 credits are used up, so the budget alert (`devops-crm-monthly`, $30) and prompt teardown matter.
 
 ## Destroy
 

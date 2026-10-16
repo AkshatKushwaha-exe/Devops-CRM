@@ -210,7 +210,7 @@ cd frontend
 node scripts/capture-screenshots.mjs http://127.0.0.1:3000 ../docs/evidence/<name>
 ```
 
-See the [validation record](docs/VALIDATION.md) for every check that was executed, including the PostgreSQL runtime verification, restart persistence, and screenshots.
+Submission evidence by requirement: [docs/SUBMISSION.md](docs/SUBMISSION.md). Live demo script: [docs/DEMO.md](docs/DEMO.md). See the [validation record](docs/VALIDATION.md) for every check that was executed, including the PostgreSQL runtime verification, restart persistence, and screenshots.
 
 ## Data rules
 
