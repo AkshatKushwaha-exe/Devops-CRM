@@ -1,0 +1,32 @@
+$ curl http://<alb>/api/version
+{"version":"abfe21f8e5803ad38984da6bcd913052a9fa426b"}
+
+$ kubectl -n crm get pods,svc,ingress,hpa,pvc,servicemonitor -o wide
+NAME                                READY   STATUS      RESTARTS   AGE     IP             NODE                                          NOMINATED NODE   READINESS GATES
+pod/crm-backend-5b7496469f-px2lx    1/1     Running     0          4m52s   10.20.41.168   ip-10-20-37-143.ap-south-1.compute.internal   <none>           <none>
+pod/crm-backend-5b7496469f-tj864    1/1     Running     0          4m37s   10.20.19.184   ip-10-20-21-55.ap-south-1.compute.internal    <none>           1/1
+pod/crm-frontend-7b97b9bd7b-42wwn   1/1     Running     0          4m52s   10.20.45.144   ip-10-20-37-143.ap-south-1.compute.internal   <none>           <none>
+pod/crm-frontend-7b97b9bd7b-czp72   1/1     Running     0          4m52s   10.20.26.5     ip-10-20-21-55.ap-south-1.compute.internal    <none>           <none>
+pod/crm-migrate-r1-ffkwn            0/1     Completed   0          4m51s   10.20.32.153   ip-10-20-37-143.ap-south-1.compute.internal   <none>           <none>
+pod/crm-postgres-0                  1/1     Running     0          4m52s   10.20.27.105   ip-10-20-21-55.ap-south-1.compute.internal    <none>           <none>
+
+NAME                   TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE     SELECTOR
+service/crm-backend    ClusterIP   172.20.95.123    <none>        8000/TCP   4m52s   app.kubernetes.io/component=backend,app.kubernetes.io/instance=crm,app.kubernetes.io/name=devops-crm
+service/crm-frontend   ClusterIP   172.20.85.86     <none>        80/TCP     4m52s   app.kubernetes.io/component=frontend,app.kubernetes.io/instance=crm,app.kubernetes.io/name=devops-crm
+service/crm-postgres   ClusterIP   172.20.147.151   <none>        5432/TCP   4m52s   app.kubernetes.io/component=postgres,app.kubernetes.io/instance=crm,app.kubernetes.io/name=devops-crm
+
+NAME                            CLASS   HOSTS   ADDRESS                                             PORTS   AGE
+ingress.networking.k8s.io/crm   alb     *       devops-crm-471212951.ap-south-1.elb.amazonaws.com   80      4m51s
+
+NAME                                              REFERENCE                TARGETS       MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/crm-backend   Deployment/crm-backend   cpu: 4%/60%   2         6         2          4m53s
+
+NAME                                        STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE     VOLUMEMODE
+persistentvolumeclaim/data-crm-postgres-0   Bound    pvc-0477c9c8-4de7-44ce-98f1-8de2e5e8475e   10Gi       RWO            gp3            <unset>                 4m53s   Filesystem
+
+NAME                                               AGE
+servicemonitor.monitoring.coreos.com/crm-backend   4m52s
+
+$ helm -n crm history crm
+REVISION	UPDATED                 	STATUS  	CHART           	APP VERSION	DESCRIPTION     
+1       	Fri Oct 16 14:22:44 2026	deployed	devops-crm-0.1.0	0.1.0      	Install complete
