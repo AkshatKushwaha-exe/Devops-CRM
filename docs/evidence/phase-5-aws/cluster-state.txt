@@ -1,0 +1,56 @@
+$ kubectl get nodes -o wide
+NAME                                          STATUS   ROLES    AGE     VERSION               INTERNAL-IP    EXTERNAL-IP   OS-IMAGE                        KERNEL-VERSION                            CONTAINER-RUNTIME
+ip-10-20-21-55.ap-south-1.compute.internal    Ready    <none>   4m48s   v1.36.4-eks-b9510e3   10.20.21.55    <none>        Amazon Linux 2023.12.20261012   6.18.54-121.166.amzn2023.x86_64 (amd64)   containerd://2.3.5+unknown
+ip-10-20-37-143.ap-south-1.compute.internal   Ready    <none>   4m48s   v1.36.4-eks-b9510e3   10.20.37.143   <none>        Amazon Linux 2023.12.20261012   6.18.54-121.166.amzn2023.x86_64 (amd64)   containerd://2.3.5+unknown
+
+$ kubectl get pods -n kube-system -o wide
+NAME                                           READY   STATUS    RESTARTS   AGE     IP             NODE                                          NOMINATED NODE   READINESS GATES
+aws-load-balancer-controller-67b7c6dcc-5qp6q   1/1     Running   0          3m35s   10.20.25.26    ip-10-20-21-55.ap-south-1.compute.internal    <none>           <none>
+aws-load-balancer-controller-67b7c6dcc-b42s8   1/1     Running   0          3m34s   10.20.39.110   ip-10-20-37-143.ap-south-1.compute.internal   <none>           <none>
+aws-node-mbsqh                                 2/2     Running   0          4m48s   10.20.21.55    ip-10-20-21-55.ap-south-1.compute.internal    <none>           <none>
+aws-node-wrvz8                                 2/2     Running   0          4m47s   10.20.37.143   ip-10-20-37-143.ap-south-1.compute.internal   <none>           <none>
+coredns-5b5f57d59c-8nfgz                       1/1     Running   0          4m21s   10.20.22.151   ip-10-20-21-55.ap-south-1.compute.internal    <none>           <none>
+coredns-5b5f57d59c-t4dlt                       1/1     Running   0          4m21s   10.20.42.167   ip-10-20-37-143.ap-south-1.compute.internal   <none>           <none>
+ebs-csi-controller-57f48bfdb7-6nj7h            6/6     Running   0          4m15s   10.20.17.209   ip-10-20-21-55.ap-south-1.compute.internal    <none>           <none>
+ebs-csi-controller-57f48bfdb7-qx9bd            6/6     Running   0          4m15s   10.20.46.37    ip-10-20-37-143.ap-south-1.compute.internal   <none>           <none>
+ebs-csi-node-cqf56                             3/3     Running   0          4m16s   10.20.22.81    ip-10-20-21-55.ap-south-1.compute.internal    <none>           <none>
+ebs-csi-node-lqtwm                             3/3     Running   0          4m16s   10.20.39.212   ip-10-20-37-143.ap-south-1.compute.internal   <none>           <none>
+eks-pod-identity-agent-49xsq                   1/1     Running   0          4m47s   10.20.37.143   ip-10-20-37-143.ap-south-1.compute.internal   <none>           <none>
+eks-pod-identity-agent-tkhqd                   1/1     Running   0          4m48s   10.20.21.55    ip-10-20-21-55.ap-south-1.compute.internal    <none>           <none>
+kube-proxy-2rtw8                               1/1     Running   0          4m22s   10.20.37.143   ip-10-20-37-143.ap-south-1.compute.internal   <none>           <none>
+kube-proxy-vfwng                               1/1     Running   0          4m22s   10.20.21.55    ip-10-20-21-55.ap-south-1.compute.internal    <none>           <none>
+metrics-server-757746754b-2l24v                1/1     Running   0          4m20s   10.20.24.78    ip-10-20-21-55.ap-south-1.compute.internal    <none>           <none>
+metrics-server-757746754b-zbmp5                1/1     Running   0          4m20s   10.20.44.52    ip-10-20-37-143.ap-south-1.compute.internal   <none>           <none>
+
+$ kubectl get storageclass,ingressclass
+NAME                                        PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+storageclass.storage.k8s.io/gp2             kubernetes.io/aws-ebs   Delete          WaitForFirstConsumer   false                  44m
+storageclass.storage.k8s.io/gp3 (default)   ebs.csi.aws.com         Delete          WaitForFirstConsumer   true                   3m44s
+
+NAME                                 CONTROLLER            PARAMETERS   AGE
+ingressclass.networking.k8s.io/alb   ingress.k8s.aws/alb   <none>       3m35s
+
+$ aws eks describe-cluster --name devops-crm
+authMode: API
+endpointPublic: true
+logging:
+- authenticator
+platform: eks.14
+status: ACTIVE
+version: '1.36'
+$ aws eks list-addons --cluster-name devops-crm
+ADDONS	aws-ebs-csi-driver
+ADDONS	coredns
+ADDONS	eks-pod-identity-agent
+ADDONS	kube-proxy
+ADDONS	metrics-server
+ADDONS	vpc-cni
+$ aws eks describe-nodegroup (instance types / AMI)
+amiType: AL2023_x86_64_STANDARD
+instanceTypes:
+- m7i-flex.large
+scaling:
+  desiredSize: 2
+  maxSize: 2
+  minSize: 2
+status: ACTIVE

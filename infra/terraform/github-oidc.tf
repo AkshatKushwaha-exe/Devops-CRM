@@ -36,10 +36,16 @@ data "aws_iam_policy_document" "github_deploy_trust" {
       values   = ["sts.amazonaws.com"]
     }
 
+    # GitHub sends either the legacy subject or, for repositories with immutable subjects,
+    # one that embeds the owner and repository IDs (stable across renames). Both name only
+    # this repository's deploy environment.
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repository}:environment:${var.github_environment}"]
+      values = compact([
+        "repo:${var.github_repository}:environment:${var.github_environment}",
+        var.github_oidc_subject_prefix == "" ? "" : "${var.github_oidc_subject_prefix}:environment:${var.github_environment}",
+      ])
     }
   }
 }

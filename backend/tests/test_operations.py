@@ -77,4 +77,5 @@ def test_version_reports_the_build(client, monkeypatch):
     from app.config import settings
 
     monkeypatch.setattr(settings, "app_version", "014afef")
-    assert client.get("/api/version").json() == {"version": "014afef"}
+    monkeypatch.setattr(settings, "app_environment", "Production")
+    assert client.get("/api/version").json() == {"version": "014afef", "environment": "Production"}

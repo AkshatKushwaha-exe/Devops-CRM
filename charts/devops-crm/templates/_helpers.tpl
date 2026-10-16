@@ -46,6 +46,10 @@ app.kubernetes.io/component: {{ .component }}
     secretKeyRef:
       name: {{ include "crm.databaseSecret" . }}
       key: DATABASE_URL
+{{- with .Values.environment }}
+- name: APP_ENVIRONMENT
+  value: {{ . | quote }}
+{{- end }}
 {{- end -}}
 
 {{- define "crm.podSecurityContext" -}}

@@ -1,0 +1,93 @@
+# terraform plan (second apply, after switching to Free Tier m7i-flex.large nodes)
+Plan: 10 to add, 0 to change, 0 to destroy.
+
+# terraform apply (first run: 65 resources created, then node group failed: t4g.large not Free Tier eligible)
+module.aws_lb_controller_pod_identity.aws_iam_policy.lb_controller[0]: Creation complete after 2s
+aws_iam_openid_connect_provider.github[0]: Creation complete after 2s
+module.ebs_csi_pod_identity.aws_iam_role.this[0]: Creation complete after 2s
+module.vpc.aws_vpc.this[0]: Creation complete after 2s
+module.ebs_csi_pod_identity.aws_iam_policy.ebs_csi[0]: Creation complete after 2s
+module.aws_lb_controller_pod_identity.aws_iam_role.this[0]: Creation complete after 2s
+module.eks.module.eks_managed_node_group["default"].aws_iam_role.this[0]: Creation complete after 3s
+module.eks.aws_iam_role.this[0]: Creation complete after 3s
+module.vpc.aws_default_route_table.default[0]: Creation complete after 1s
+module.vpc.aws_internet_gateway.this[0]: Creation complete after 1s
+module.vpc.aws_route_table.private[0]: Creation complete after 1s
+module.vpc.aws_subnet.private[1]: Creation complete after 1s
+aws_iam_role.github_deploy: Creation complete after 1s
+module.vpc.aws_subnet.public[0]: Creation complete after 0s
+module.vpc.aws_subnet.private[0]: Creation complete after 0s
+module.vpc.aws_default_network_acl.this[0]: Creation complete after 2s
+module.vpc.aws_route_table.public[0]: Creation complete after 1s
+module.vpc.aws_subnet.public[1]: Creation complete after 1s
+module.vpc.aws_default_security_group.this[0]: Creation complete after 2s
+module.ebs_csi_pod_identity.aws_iam_role_policy_attachment.ebs_csi[0]: Creation complete after 1s
+module.eks.module.eks_managed_node_group["default"].aws_iam_role_policy_attachment.this["AmazonEKS_CNI_Policy"]: Creation complete after 1s
+module.aws_lb_controller_pod_identity.aws_iam_role_policy_attachment.lb_controller[0]: Creation complete after 1s
+module.eks.module.eks_managed_node_group["default"].aws_iam_role_policy_attachment.this["AmazonEC2ContainerRegistryReadOnly"]: Creation complete after 0s
+module.eks.module.eks_managed_node_group["default"].aws_iam_role_policy_attachment.this["AmazonEKSWorkerNodePolicy"]: Creation complete after 0s
+module.eks.aws_iam_role_policy_attachment.this["AmazonEKSClusterPolicy"]: Creation complete after 0s
+module.vpc.aws_route_table_association.private[1]: Creation complete after 0s
+module.vpc.aws_route_table_association.private[0]: Creation complete after 0s
+module.vpc.aws_route_table_association.public[1]: Creation complete after 1s
+module.vpc.aws_route_table_association.public[0]: Creation complete after 1s
+module.eks.aws_security_group.node[0]: Creation complete after 2s
+module.eks.aws_security_group.cluster[0]: Creation complete after 2s
+module.vpc.aws_eip.nat[0]: Creation complete after 1s
+module.vpc.aws_route.public_internet_gateway[0]: Creation complete after 1s
+module.eks.aws_security_group_rule.cluster["ingress_nodes_443"]: Creation complete after 0s
+module.eks.aws_security_group_rule.node["egress_all"]: Creation complete after 0s
+module.eks.aws_security_group_rule.node["ingress_cluster_9443_webhook"]: Creation complete after 1s
+module.eks.aws_security_group_rule.node["ingress_self_coredns_udp"]: Creation complete after 1s
+module.eks.aws_security_group_rule.node["ingress_cluster_kubelet"]: Creation complete after 2s
+module.eks.aws_security_group_rule.node["ingress_cluster_4443_webhook"]: Creation complete after 2s
+module.eks.aws_security_group_rule.node["ingress_cluster_6443_webhook"]: Creation complete after 3s
+module.eks.aws_security_group_rule.node["ingress_nodes_ephemeral"]: Creation complete after 4s
+module.eks.aws_cloudwatch_log_group.this[0]: Creation complete after 9s
+module.eks.aws_security_group_rule.node["ingress_self_coredns_tcp"]: Creation complete after 4s
+module.eks.aws_security_group_rule.node["ingress_cluster_443"]: Creation complete after 5s
+module.eks.aws_security_group_rule.node["ingress_cluster_8443_webhook"]: Creation complete after 4s
+module.eks.aws_security_group_rule.node["ingress_cluster_10251_webhook"]: Creation complete after 5s
+module.eks.module.kms.aws_kms_key.this[0]: Creation complete after 24s
+module.eks.module.kms.aws_kms_alias.this["cluster"]: Creation complete after 0s
+module.eks.aws_iam_policy.cluster_encryption[0]: Creation complete after 1s
+module.eks.aws_iam_role_policy_attachment.cluster_encryption[0]: Creation complete after 1s
+module.vpc.aws_nat_gateway.this[0]: Creation complete after 1m45s
+module.vpc.aws_route.private_nat_gateway[0]: Creation complete after 0s
+module.eks.aws_eks_cluster.this[0]: Creation complete after 9m48s
+module.eks.aws_eks_access_entry.this["github_deploy"]: Creation complete after 1s
+module.eks.aws_eks_access_entry.this["cluster_creator"]: Creation complete after 1s
+module.eks.aws_eks_access_policy_association.this["github_deploy_app_namespace"]: Creation complete after 1s
+module.eks.aws_eks_access_policy_association.this["cluster_creator_admin"]: Creation complete after 1s
+module.eks.aws_iam_openid_connect_provider.oidc_provider[0]: Creation complete after 2s
+module.aws_lb_controller_pod_identity.aws_eks_pod_identity_association.this["controller"]: Creation complete after 1s
+aws_iam_role_policy.github_deploy: Creation complete after 2s
+module.eks.aws_eks_addon.before_compute["eks-pod-identity-agent"]: Creation complete after 7s
+module.eks.aws_eks_addon.before_compute["vpc-cni"]: Creation complete after 14s
+module.eks.time_sleep.this[0]: Creation complete after 31s
+module.eks.module.eks_managed_node_group["default"].module.user_data.null_resource.validate_cluster_service_cidr: Creation complete after 0s
+module.eks.module.eks_managed_node_group["default"].aws_launch_template.this[0]: Creation complete after 6s
+...
+Error: waiting for EKS Node Group (devops-crm:default-db4e5696ba48f2c5a48a858d1b) create: context canceled
+
+# terraform apply (second run)
+module.eks.module.eks_managed_node_group["default"].aws_eks_node_group.this[0]: Creation complete after 1m18s
+module.eks.aws_eks_addon.this["coredns"]: Creation complete after 15s
+module.eks.aws_eks_addon.this["kube-proxy"]: Creation complete after 25s
+module.eks.aws_eks_addon.this["aws-ebs-csi-driver"]: Creation complete after 36s
+module.eks.aws_eks_addon.this["metrics-server"]: Creation complete after 45s
+kubernetes_namespace_v1.app: Creation complete after 1s
+kubernetes_storage_class_v1.gp3: Creation complete after 1s
+kubernetes_role_v1.deployer_monitoring: Creation complete after 0s
+kubernetes_role_binding_v1.deployer_monitoring: Creation complete after 0s
+helm_release.aws_load_balancer_controller: Creation complete after 27s
+Apply complete! Resources: 10 added, 0 changed, 0 destroyed.
+
+$ terraform output
+app_namespace = "crm"
+cluster_name = "devops-crm"
+cluster_version = "1.36"
+github_deploy_role_arn = "arn:aws:iam::<account-id>:role/devops-crm-github-deploy"
+kubeconfig_command = "aws eks update-kubeconfig --region ap-south-1 --name devops-crm"
+region = "ap-south-1"
+vpc_id = "vpc-081b7df138eb1faba"

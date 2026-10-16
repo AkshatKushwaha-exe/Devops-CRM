@@ -1,5 +1,7 @@
 # Amazon EKS (infra/terraform): AWS Load Balancer Controller + EBS CSI driver.
 # CD installs with: --set imageTag=<commit-sha>
+environment: Production
+
 ingress:
   className: alb
   annotations:

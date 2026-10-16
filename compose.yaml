@@ -10,6 +10,7 @@ x-app-hardening: &hardening
 
 x-database-url: &database-url
   DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD:-crm_local_only}@db:5432/${POSTGRES_DB:-crm}
+  APP_ENVIRONMENT: Docker Compose
 
 services:
   db:

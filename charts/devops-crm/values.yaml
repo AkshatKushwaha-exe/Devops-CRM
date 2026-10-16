@@ -4,6 +4,9 @@
 # Image tag shared by the backend, migration job, and frontend. CD sets this to the commit SHA.
 imageTag: ""
 
+# Environment name shown in the UI header ("<environment> workspace"); empty keeps "Local".
+environment: ""
+
 imagePullSecrets: []
 
 backend:

@@ -32,7 +32,11 @@ function currentPage() {
 
 export default function App() {
   const [page, setPage] = useState(currentPage);
-  const build = useResource<{ version: string }>("/version").data?.version;
+  const deployment = useResource<{ version: string; environment: string }>(
+    "/version",
+  ).data;
+  const build = deployment?.version;
+  const workspace = `${deployment?.environment ?? "Local"} workspace`;
   const [version, setVersion] = useState(0);
   const [toast, setToast] = useState("");
   const [menu, setMenu] = useState(false);
@@ -127,7 +131,7 @@ export default function App() {
             <span className="profile-avatar">AK</span>
             <div>
               <strong>Akshat Kushwaha</strong>
-              <small>Local workspace</small>
+              <small>{workspace}</small>
             </div>
             <span className="profile-dot" />
           </div>
@@ -152,7 +156,7 @@ export default function App() {
           <div className="topbar-right">
             <span className="local-badge">
               <i />
-              Local workspace
+              {workspace}
             </span>
             <span className="topbar-divider" />
             <span className="topbar-avatar" aria-label="Akshat Kushwaha">
