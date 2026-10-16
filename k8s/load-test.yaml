@@ -1,0 +1,44 @@
+# Controlled load for the HPA demonstration: 120 s of concurrent GET /api/dashboard
+# against the backend Service from inside the cluster.
+#   kubectl -n crm apply -f k8s/load-test.yaml
+#   kubectl -n crm get hpa crm-backend --watch
+#   kubectl -n crm delete -f k8s/load-test.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: crm-load-test
+  labels:
+    app.kubernetes.io/part-of: devops-crm
+    app.kubernetes.io/component: load-test
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: load-test
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: fortio
+          image: fortio/fortio:1.69.5
+          args:
+            - load
+            - -c=16          # concurrent connections
+            - -qps=0         # as fast as the API answers
+            - -t=120s
+            - -timeout=10s
+            - -allow-initial-errors
+            - -keepalive=false # new connection per request, so kube-proxy spreads load to new pods
+            - http://crm-backend:8000/api/dashboard
+          resources:
+            requests: { cpu: 100m, memory: 64Mi }
+            limits: { cpu: "1", memory: 128Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }

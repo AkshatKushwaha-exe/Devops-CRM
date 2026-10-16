@@ -67,6 +67,49 @@ Frontend lint + tests → Frontend build ─┴→ Build images (arm64) → Triv
 - **Tags:** `ghcr.io/akshatkushwaha-exe/devops-crm-{backend,frontend}:<full commit SHA>`, with OCI `revision`/`source` labels and a signed build-provenance attestation. Verify with `gh attestation verify oci://<image> --owner AkshatKushwaha-exe`.
 - All third-party actions are pinned to commit SHAs.
 
+## Deploy to Kubernetes with Helm
+
+The chart in [`charts/devops-crm`](charts/devops-crm) installs:
+
+| Resource | Details |
+|---|---|
+| `crm-frontend` Deployment + ClusterIP Service | 2 replicas of the Nginx UI image; `/healthz` probes; preStop drain; read-only root filesystem |
+| `crm-backend` Deployment + ClusterIP Service | 2–6 replicas (HPA at 60% of a 100m CPU request); startup/liveness `/health`, readiness `/ready`; init container waits for migrations |
+| `crm-migrate-r<revision>` Job | `python -m app.migrate upgrade` on every install, upgrade, and rollback |
+| `crm-postgres` StatefulSet + ClusterIP Service | PostgreSQL 18 on a PersistentVolumeClaim (`volumeClaimTemplates`) with `pg_isready` probes |
+| `crm-database` Secret, `crm-postgres` ConfigMap | Generated password reused on upgrades and kept on uninstall, so a reinstall still opens the retained volume |
+| Ingress | `/api` → backend, `/` → frontend (`nginx` class locally, AWS ALB on EKS) |
+| HPA, PodDisruptionBudgets, `helm test` hook | Autoscaling, `minAvailable: 1` during node drains, in-cluster smoke test |
+
+All pods run as non-root with `RuntimeDefault` seccomp and all capabilities dropped.
+
+### Local cluster (minikube)
+
+```bash
+minikube start --nodes 2
+minikube addons enable metrics-server
+minikube addons enable ingress
+minikube addons enable storage-provisioner-rancher   # node-pinned local-path volumes
+
+SHA=$(git rev-parse origin/main)   # any commit published by CI
+helm upgrade --install crm charts/devops-crm -n crm --create-namespace \
+  -f charts/devops-crm/values-local.yaml --set imageTag=$SHA --wait
+helm test crm -n crm
+
+kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 8088:80
+# → http://localhost:8088 (the Ingress routes /api and /)
+```
+
+Images are linux/arm64 to match Apple-silicon minikube and AWS Graviton. On an x86 machine, build locally and run `minikube image load` instead.
+
+Exercises used for validation:
+
+```bash
+kubectl -n crm delete pod -l app.kubernetes.io/component=backend --wait=false  # replacement
+kubectl -n crm delete pod crm-postgres-0                                       # data persists
+kubectl -n crm apply -f k8s/load-test.yaml && kubectl -n crm get hpa -w        # HPA scaling
+```
+
 ## Start locally (development)
 
 Prerequisites: Node.js 22.12+ (Node 24 recommended), pnpm 10, uv, and Python 3.12. `uv` can install Python 3.12 automatically. Dependency downloads need internet access on the first run.
@@ -174,6 +217,8 @@ frontend/Dockerfile      UI image (Vite build → unprivileged Nginx)
 frontend/nginx/          Nginx site template: static UI, /api proxy, /healthz
 compose.yaml             PostgreSQL, migration step, API, and UI
 .github/workflows/       CI: tests → build → scan → publish
+charts/devops-crm/       Helm chart (values-local.yaml for minikube)
+k8s/                     Load test and troubleshooting exercises
 frontend/src/            React screens, components, styling, component tests
 frontend/e2e/            Browser workflows
 frontend/scripts/        Evidence screenshot capture

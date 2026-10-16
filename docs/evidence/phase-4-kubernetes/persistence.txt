@@ -1,0 +1,39 @@
+# PostgreSQL pod replacement
+dashboard: {'total_contacts': 1, 'active_deals': 1, 'pipeline_value': '95000.50'}
+$ kubectl -n crm get pvc
+NAME                  STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+data-crm-postgres-0   Bound    pvc-8702939a-cbc6-49b9-a18c-7edcf3cbbd1f   2Gi        RWO            local-path     <unset>                 5m51s
+
+$ kubectl -n crm delete pod crm-postgres-0
+pod "crm-postgres-0" deleted from crm namespace
+pod/crm-postgres-0 condition met
+NAME             READY   STATUS    RESTARTS   AGE   IP            NODE           NOMINATED NODE   RE
+crm-postgres-0   1/1     Running   0          7s    10.244.1.61   minikube-m02   <none>           <n
+volume after restart: pvc-8702939a-cbc6-49b9-a18c-7edcf3cbbd1f (before: pvc-8702939a-cbc6-49b9-a18c-7edcf3cbbd1f)
+dashboard: {'total_contacts': 1, 'active_deals': 1, 'pipeline_value': '95000.50'}
+
+# Full release removal and reinstall
+$ helm uninstall crm -n crm --wait
+These resources were kept due to the resource policy:
+[Secret] crm-database
+
+release "crm" uninstalled
+$ kubectl -n crm get pods,pvc,secret
+NAME                                READY   STATUS        RESTARTS   AGE
+pod/crm-backend-7ddb49bb77-hvcz6    1/1     Terminating   0          79s
+pod/crm-backend-7ddb49bb77-s5zxc    1/1     Terminating   0          62s
+pod/crm-frontend-55c599cd48-9h4tr   1/1     Terminating   0          62s
+pod/crm-frontend-55c599cd48-fpsnk   1/1     Terminating   0          85s
+pod/crm-postgres-0                  0/1     Completed     0          8s
+
+NAME                                        STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+persistentvolumeclaim/data-crm-postgres-0   Bound    pvc-8702939a-cbc6-49b9-a18c-7edcf3cbbd1f   2Gi        RWO            local-path     <unset>                 6m
+
+NAME                  TYPE     DATA   AGE
+secret/crm-database   Opaque   2      6m
+
+$ helm install crm charts/devops-crm -n crm -f charts/devops-crm/values-local.yaml --set imageTag=014afefde003c3cd149d1d37676d0b0c4ef2c2ea --wait
+STATUS: deployed
+REVISION: 1
+Schema is already at head.
+dashboard: {'total_contacts': 1, 'active_deals': 1, 'pipeline_value': '95000.50'}

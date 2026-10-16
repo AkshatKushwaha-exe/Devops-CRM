@@ -1,0 +1,120 @@
+{{- $b := .Values.backend }}
+{{- $fullname := include "crm.fullname" . }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-backend
+  labels:
+    {{- include "crm.labels" (dict "ctx" $ "component" "backend") | nindent 4 }}
+  {{- with $b.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "crm.componentSelector" (dict "ctx" $ "component" "backend") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ $b.service.port }}
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-backend
+  labels:
+    {{- include "crm.labels" (dict "ctx" $ "component" "backend") | nindent 4 }}
+spec:
+  {{- if not $b.autoscaling.enabled }}
+  replicas: {{ $b.replicas }}
+  {{- end }}
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels:
+      {{- include "crm.componentSelector" (dict "ctx" $ "component" "backend") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "crm.componentSelector" (dict "ctx" $ "component" "backend") | nindent 8 }}
+        app.kubernetes.io/version: {{ include "crm.tag" (dict "ctx" $ "image" $b.image) | quote }}
+      {{- with $b.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- include "crm.podSecurityContext" . | nindent 8 }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "crm.componentSelector" (dict "ctx" $ "component" "backend") | nindent 14 }}
+      {{- with $b.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $b.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        # Never serve traffic against an old schema: wait for the migration Job to finish.
+        - name: wait-for-migrations
+          image: {{ include "crm.image" (dict "ctx" $ "image" $b.image) }}
+          imagePullPolicy: {{ $b.image.pullPolicy }}
+          command: ["python", "-m", "app.migrate", "wait", "--timeout", "{{ .Values.migrations.timeoutSeconds }}"]
+          env:
+            {{- include "crm.backendEnv" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.migrations.resources | nindent 12 }}
+          securityContext:
+            {{- include "crm.containerSecurityContext" . | nindent 12 }}
+      containers:
+        - name: api
+          image: {{ include "crm.image" (dict "ctx" $ "image" $b.image) }}
+          imagePullPolicy: {{ $b.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+          lifecycle:
+            # Keep serving while the endpoint is removed from Services and the Ingress,
+            # so a pod being replaced never receives traffic after it stops listening.
+            preStop:
+              sleep:
+                seconds: 5
+          env:
+            {{- include "crm.backendEnv" . | nindent 12 }}
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 3
+          readinessProbe:
+            # /ready checks database connectivity and the application tables.
+            httpGet: { path: /ready, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml $b.resources | nindent 12 }}
+          securityContext:
+            {{- include "crm.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

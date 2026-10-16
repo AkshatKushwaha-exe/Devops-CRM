@@ -1,0 +1,36 @@
+# `helm test <release>`: checks the API (database + schema) and the UI's /api proxy in-cluster.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "crm.fullname" . }}-smoke-test
+  labels:
+    {{- include "crm.labels" (dict "ctx" $ "component" "test") | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  securityContext:
+    {{- include "crm.podSecurityContext" . | nindent 4 }}
+  containers:
+    - name: smoke
+      image: {{ include "crm.image" (dict "ctx" $ "image" .Values.backend.image) }}
+      imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+      command:
+        - python
+        - -c
+        - |
+          import json, urllib.request
+          def get(url):
+              with urllib.request.urlopen(url, timeout=5) as r:
+                  print(url, r.status)
+                  return r.read()
+          get("http://{{ include "crm.fullname" . }}-backend:{{ .Values.backend.service.port }}/ready")
+          get("http://{{ include "crm.fullname" . }}-frontend:{{ .Values.frontend.service.port }}/healthz")
+          dashboard = json.loads(get("http://{{ include "crm.fullname" . }}-frontend:{{ .Values.frontend.service.port }}/api/dashboard"))
+          print("contacts:", dashboard["total_contacts"], "pipeline:", dashboard["pipeline_value"])
+      resources:
+        requests: { cpu: 10m, memory: 32Mi }
+        limits: { cpu: 200m, memory: 128Mi }
+      securityContext:
+        {{- include "crm.containerSecurityContext" . | nindent 8 }}

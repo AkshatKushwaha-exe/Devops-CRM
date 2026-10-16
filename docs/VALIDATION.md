@@ -71,3 +71,34 @@ Validated on 16 October 2026 with Docker Desktop 29.6 (linux/arm64) and Trivy 0.
 | Fresh checkout | Clean `git clone` of this branch, `docker compose -p crm-fresh up --build` on port 8081 → all services healthy (see below) |
 
 Evidence: [compose-status.txt](evidence/phase-2-compose/compose-status.txt) · [desktop overview](evidence/phase-2-compose/desktop-overview.png) · [desktop pipeline](evidence/phase-2-compose/desktop-pipeline.png) · [desktop contacts](evidence/phase-2-compose/desktop-contacts.png) · [mobile overview](evidence/phase-2-compose/mobile-overview.png) · [mobile navigation](evidence/phase-2-compose/mobile-navigation.png)
+
+## Phase 3 — Continuous integration
+
+| Check | Result |
+|---|---|
+| Pull request [#3](https://github.com/AkshatKushwaha-exe/Devops-CRM/pull/3), run `38878734745` | All 7 jobs green; `Publish to GHCR` skipped as designed on a PR |
+| Push to `main` (`014afef`), run `38881495132` | Tests → build → Trivy (0 HIGH/CRITICAL for both images) → **published** |
+| Published images | `ghcr.io/akshatkushwaha-exe/devops-crm-backend:014afefde003c3cd149d1d37676d0b0c4ef2c2ea` (`sha256:dd54123d…`) and `…/devops-crm-frontend:014afef…` (`sha256:ac2a0cb0…`), public, linked to the repository, each with a provenance attestation |
+| Gate negative test (local) | The earlier Debian-slim backend image yields 44 HIGH findings, so the gate's `jq` count fails the job |
+
+Screenshots of the workflow run, Trivy summaries, and GHCR tags: [`evidence/phase-3-ci/`](evidence/phase-3-ci/).
+
+## Phase 4 — Helm on a local Kubernetes cluster
+
+Validated on minikube v1.39 (Kubernetes 1.37, two arm64 nodes, containerd) with the `ingress`, `metrics-server`, and `storage-provisioner-rancher` addons, using the CI-published images for commit `014afef`.
+
+| Check | Result |
+|---|---|
+| `helm lint --strict`, kubeconform (strict, 1.34 schemas) | Pass for `values-local.yaml` and `values-eks.yaml` (14 resources each) |
+| Install from local images, then `helm upgrade` to GHCR images | Revision 1 → 2: Job `crm-migrate-r2` ran (`Schema is already at head.`); rolling update with no downtime |
+| Workloads | 2 × backend, 2 × frontend spread across both nodes; `crm-postgres-0` on a bound `local-path` PVC; HPA 2–6; PDBs `minAvailable: 1` |
+| Ingress (`nginx` class) | `/` 200 HTML, `/api/dashboard` 200 JSON, `/api/docs` 200 |
+| `helm test crm` | Succeeded: API `/ready`, frontend `/healthz`, and the frontend's `/api` proxy, all checked in-cluster |
+| UI through Ingress (Chrome) | Created *Kavya Menon* and a ₹95,000.50 Qualified deal; dashboard matched |
+| Pod replacement under traffic | 1 backend + 1 frontend pod deleted during 45 s of continuous requests through the Ingress: **366/366 succeeded**. The first attempt lost 1/302 requests; a `preStop` sleep (5 s) fixed endpoint-removal races. [log](evidence/phase-4-kubernetes/pod-replacement.txt) |
+| PostgreSQL pod replacement | `crm-postgres-0` deleted → recreated on the same PVC → data intact. [log](evidence/phase-4-kubernetes/persistence.txt) |
+| `helm uninstall` + reinstall | PVC and the kept `crm-database` Secret survived; reinstall reused the password and showed the same records |
+| HPA under controlled load | `k8s/load-test.yaml` (fortio, 16 connections, 120 s): 249% CPU → 4 → 6 replicas within ~45 s; 32,801 requests, 100% HTTP 200; then 6 → 2 one pod per minute after a 120 s stabilization window. [log](evidence/phase-4-kubernetes/hpa-scaling.txt) |
+| Load-test pitfall found | With keep-alive connections, kube-proxy pins each connection to a pod, so new replicas sat idle while the first two hit their 500m limit ([log](evidence/phase-4-kubernetes/hpa-keepalive-skew.txt)). The load test now opens a connection per request, like independent clients; Ingress and ALB balance per request anyway |
+
+Screenshots through the Ingress: [desktop overview](evidence/phase-4-kubernetes/desktop-overview.png) · [desktop pipeline](evidence/phase-4-kubernetes/desktop-pipeline.png) · [mobile overview](evidence/phase-4-kubernetes/mobile-overview.png)
