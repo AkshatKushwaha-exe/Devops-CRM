@@ -6,7 +6,7 @@ Repository: https://github.com/AkshatKushwaha-exe/Devops-CRM
 
 Presentation video (7½ minutes, captioned): [devops-crm-presentation.mp4](devops-crm-presentation.mp4)
 
-Live on AWS (until teardown after evaluation): http://devops-crm-471212951.ap-south-1.elb.amazonaws.com
+The AWS environment ran on EKS in ap-south-1 from 16 to 21 October 2026 and was torn down after evaluation ([teardown log](docs/evidence/phase-8-teardown/teardown.log)). To recreate it, see [Bring it back after teardown](#bring-it-back-after-teardown).
 
 ## What works
 
@@ -110,7 +110,23 @@ gh variable set EKS_CLUSTER_NAME    --body "$(terraform output -raw cluster_name
 gh variable set AWS_REGION          --body "$(terraform output -raw region)"
 ```
 
-The stack costs about $0.38/hour. Tear it down after evaluation: `AWS_PROFILE=<profile> bash scripts/teardown-aws.sh` uninstalls the releases (so the ALB and EBS volume are deleted), runs `terraform destroy`, and records proof in `docs/evidence/phase-8-teardown/`.
+The stack costs about $0.38/hour (about $9 a day). Tear it down after evaluation: `AWS_PROFILE=<profile> bash scripts/teardown-aws.sh` uninstalls the releases (so the ALB and EBS volume are deleted), runs `terraform destroy`, and records proof in `docs/evidence/phase-8-teardown/`. Then delete the `AWS_DEPLOY_ROLE_ARN` repository variable (`gh variable delete AWS_DEPLOY_ROLE_ARN`): CI skips the deploy job while it is unset, so pushes to `main` stay green with no cluster.
+
+### Bring it back after teardown
+
+```bash
+export AWS_PROFILE=<profile> AWS_REGION=ap-south-1
+terraform -chdir=terraform init
+terraform -chdir=terraform apply                       # ~15–20 minutes
+$(terraform -chdir=terraform output -raw kubeconfig_command)
+bash scripts/install-monitoring.sh                     # Prometheus + Grafana, before the app so its ServiceMonitor renders
+gh variable set AWS_DEPLOY_ROLE_ARN --body "$(terraform -chdir=terraform output -raw github_deploy_role_arn)"
+gh workflow run deploy.yml -f image-tag=$(git rev-parse origin/main)   # deploys the app (any published SHA works)
+gh run watch $(gh run list --workflow deploy.yml --limit 1 --json databaseId -q '.[0].databaseId')
+kubectl -n crm get ingress crm                         # the new load balancer hostname
+```
+
+The Deploy workflow runs the migrations, waits for the rollout and `helm test`, and prints the URL in its summary. The load balancer gets a new hostname each time, and the database starts empty (seed it with `kubectl -n crm exec deploy/crm-backend -- python -m app.seed` for demo data). From then on, every push to `main` deploys automatically again.
 
 PostgreSQL runs in the cluster as a StatefulSet on an EBS volume. For production, Amazon RDS for PostgreSQL (Multi-AZ, automated backups, point-in-time recovery) is the managed alternative: store its connection string as `DATABASE_URL` in a Secret and install with `--set postgresql.enabled=false --set externalDatabase.existingSecret=<secret>`. Migrations and readiness checks work unchanged.
 
@@ -268,7 +284,7 @@ All under [`docs/evidence/`](docs/evidence). Account IDs are redacted.
 | Docker Compose and browser at `localhost:3000` | [phase-2-compose/compose-status.txt](docs/evidence/phase-2-compose/compose-status.txt) · [desktop-overview.png](docs/evidence/phase-2-compose/desktop-overview.png) |
 | Green pipeline and GHCR SHA tags | [Actions run 38931035243](https://github.com/AkshatKushwaha-exe/Devops-CRM/actions/runs/38931035243) · [actions-run-main.jpg](docs/evidence/phase-3-ci/actions-run-main.jpg) · [ghcr-backend-package.jpg](docs/evidence/phase-3-ci/ghcr-backend-package.jpg) |
 | Trivy scan output | [demo-trivy-gates-and-publish.jpg](docs/evidence/phase-6-cd/demo-trivy-gates-and-publish.jpg) · [trivy-backend-summary.jpg](docs/evidence/phase-3-ci/trivy-backend-summary.jpg) · [trivy-backend/trivy.txt](docs/evidence/phase-3-ci/trivy-backend/trivy.txt) · [explanation](#security-scan-result) |
-| Terraform plan and AWS console (VPC, EKS) | [terraform-apply.txt](docs/evidence/phase-5-aws/terraform-apply.txt) · [console-vpc.jpg](docs/evidence/phase-5-aws/console-vpc.jpg) · [console-eks-cluster.jpg](docs/evidence/phase-5-aws/console-eks-cluster.jpg) · `terraform destroy`: `phase-8-teardown/` after evaluation |
+| Terraform plan and AWS console (VPC, EKS) | [terraform-apply.txt](docs/evidence/phase-5-aws/terraform-apply.txt) · [console-vpc.jpg](docs/evidence/phase-5-aws/console-vpc.jpg) · [console-eks-cluster.jpg](docs/evidence/phase-5-aws/console-eks-cluster.jpg) · [teardown.log](docs/evidence/phase-8-teardown/teardown.log) (`terraform destroy` and the empty resource checks) |
 | Pods, Services, `helm list`, app through Ingress | [kubectl-helm-status.txt](docs/evidence/phase-6-cd/kubectl-helm-status.txt) · [cluster-state.txt](docs/evidence/phase-5-aws/cluster-state.txt) · [chrome-live-overview-after.jpg](docs/evidence/phase-6-cd/chrome-live-overview-after.jpg) |
 | `/metrics`, Prometheus targets UP, Grafana | [metrics-endpoint.txt](docs/evidence/phase-7-monitoring/metrics-endpoint.txt) · [eks-prometheus-targets.jpg](docs/evidence/phase-7-monitoring/eks-prometheus-targets.jpg) · [eks-grafana-dashboard-top.jpg](docs/evidence/phase-7-monitoring/eks-grafana-dashboard-top.jpg) |
 | Live demo: commit → pipeline → deployment | [PR #14](https://github.com/AkshatKushwaha-exe/Devops-CRM/pull/14) (accent green → indigo) · [demo-deploy-summary.jpg](docs/evidence/phase-6-cd/demo-deploy-summary.jpg) · [live-rollout-poll.txt](docs/evidence/phase-6-cd/live-rollout-poll.txt) (no failed requests during the rollout) |

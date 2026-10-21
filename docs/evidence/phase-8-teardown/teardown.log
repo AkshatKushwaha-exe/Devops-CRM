@@ -1,0 +1,176 @@
+# Teardown started 2026-10-21T16:14:20Z in ap-south-1
+$ helm --kube-context devops-crm-eks -n crm uninstall crm --wait --timeout 10m
+These resources were kept due to the resource policy:
+[Secret] crm-database
+
+release "crm" uninstalled
+$ kubectl --context devops-crm-eks -n crm delete pvc --all --wait=true --timeout=5m
+persistentvolumeclaim "data-crm-postgres-0" deleted from crm namespace
+$ kubectl --context devops-crm-eks -n crm delete secret crm-database --ignore-not-found
+secret "crm-database" deleted from crm namespace
+$ helm --kube-context devops-crm-eks -n monitoring uninstall kube-prometheus-stack --wait --timeout 10m
+release "kube-prometheus-stack" uninstalled
+# Waiting for the load balancer and the PVC volume to disappear
+load balancers left: 0, PVC volumes left: 0
+$ terraform -chdir=terraform destroy -auto-approve
+module.vpc.aws_default_route_table.default[0]: Destroying... [id=rtb-005e78f22f34fdbfd]
+module.vpc.aws_route.private_nat_gateway[0]: Destroying... [id=r-rtb-00d5fe393228cb6a71080289494]
+module.vpc.aws_route_table_association.public[1]: Destroying... [id=rtbassoc-09642de7a2e29d435]
+module.vpc.aws_default_route_table.default[0]: Destruction complete after 0s
+aws_iam_role_policy.github_deploy: Destroying... [id=devops-crm-github-deploy:describe-cluster]
+module.vpc.aws_route_table_association.public[1]: Destruction complete after 1s
+module.vpc.aws_route_table_association.private[0]: Destroying... [id=rtbassoc-014068fe0a6c9acb5]
+module.vpc.aws_route.private_nat_gateway[0]: Destruction complete after 1s
+module.vpc.aws_route_table_association.private[1]: Destroying... [id=rtbassoc-036a84f44ddefb60e]
+module.vpc.aws_route_table_association.private[0]: Destruction complete after 0s
+module.vpc.aws_route.public_internet_gateway[0]: Destroying... [id=r-rtb-007dbba768fa0f3b91080289494]
+module.vpc.aws_route_table_association.private[1]: Destruction complete after 0s
+module.vpc.aws_route_table_association.public[0]: Destroying... [id=rtbassoc-0212db0f7bcb81d32]
+aws_iam_role_policy.github_deploy: Destruction complete after 2s
+module.vpc.aws_default_network_acl.this[0]: Destroying... [id=acl-0f19fd84a18bf4148]
+module.vpc.aws_default_network_acl.this[0]: Destruction complete after 0s
+module.ebs_csi_pod_identity.aws_iam_role_policy_attachment.ebs_csi[0]: Destroying... [id=devops-crm-ebs-csi-54d4191388e6775100e0f7e59e/arn:aws:iam::<account-id>:policy/AmazonEKS_EBS_CSI-6b703ab259c01a8f5292c0fdf8]
+module.vpc.aws_route_table_association.public[0]: Destruction complete after 0s
+module.vpc.aws_default_security_group.this[0]: Destroying... [id=sg-0ec64d4336aef40d9]
+module.vpc.aws_default_security_group.this[0]: Destruction complete after 0s
+module.vpc.aws_nat_gateway.this[0]: Destroying... [id=nat-0608c32d09e2b5659]
+module.vpc.aws_route.public_internet_gateway[0]: Destruction complete after 1s
+module.vpc.aws_route_table.private[0]: Destroying... [id=rtb-00d5fe393228cb6a7]
+module.ebs_csi_pod_identity.aws_iam_role_policy_attachment.ebs_csi[0]: Destruction complete after 0s
+module.vpc.aws_route_table.public[0]: Destroying... [id=rtb-007dbba768fa0f3b9]
+module.vpc.aws_route_table.private[0]: Destruction complete after 1s
+module.ebs_csi_pod_identity.aws_iam_policy.ebs_csi[0]: Destroying... [id=arn:aws:iam::<account-id>:policy/AmazonEKS_EBS_CSI-6b703ab259c01a8f5292c0fdf8]
+module.vpc.aws_route_table.public[0]: Destruction complete after 1s
+helm_release.aws_load_balancer_controller: Destroying... [id=aws-load-balancer-controller]
+module.ebs_csi_pod_identity.aws_iam_policy.ebs_csi[0]: Destruction complete after 0s
+kubernetes_role_binding_v1.deployer_monitoring: Destroying... [id=crm/crm-deployer-monitoring]
+kubernetes_role_binding_v1.deployer_monitoring: Destruction complete after 1s
+kubernetes_storage_class_v1.gp3: Destroying... [id=gp3]
+kubernetes_storage_class_v1.gp3: Destruction complete after 0s
+kubernetes_role_v1.deployer_monitoring: Destroying... [id=crm/crm-deployer-monitoring]
+kubernetes_role_v1.deployer_monitoring: Destruction complete after 0s
+kubernetes_namespace_v1.app: Destroying... [id=crm]
+helm_release.aws_load_balancer_controller: Destruction complete after 4s
+module.aws_lb_controller_pod_identity.aws_eks_pod_identity_association.this["controller"]: Destroying... [id=a-t3z9hekfl9sezg1pa]
+module.aws_lb_controller_pod_identity.aws_eks_pod_identity_association.this["controller"]: Destruction complete after 1s
+module.aws_lb_controller_pod_identity.aws_iam_role_policy_attachment.lb_controller[0]: Destroying... [id=devops-crm-aws-lbc-841c4abc3b796c0f53e0fb5bc4/arn:aws:iam::<account-id>:policy/AmazonEKS_LoadBalancerController-0653dd17c734c6e84a725012c6]
+module.aws_lb_controller_pod_identity.aws_iam_role_policy_attachment.lb_controller[0]: Destruction complete after 0s
+module.aws_lb_controller_pod_identity.aws_iam_policy.lb_controller[0]: Destroying... [id=arn:aws:iam::<account-id>:policy/AmazonEKS_LoadBalancerController-0653dd17c734c6e84a725012c6]
+module.aws_lb_controller_pod_identity.aws_iam_policy.lb_controller[0]: Destruction complete after 1s
+module.aws_lb_controller_pod_identity.aws_iam_role.this[0]: Destroying... [id=devops-crm-aws-lbc-841c4abc3b796c0f53e0fb5bc4]
+module.aws_lb_controller_pod_identity.aws_iam_role.this[0]: Destruction complete after 1s
+kubernetes_namespace_v1.app: Destruction complete after 7s
+module.eks.aws_eks_addon.before_compute["vpc-cni"]: Destroying... [id=devops-crm:vpc-cni]
+module.eks.aws_eks_addon.this["aws-ebs-csi-driver"]: Destroying... [id=devops-crm:aws-ebs-csi-driver]
+module.eks.aws_eks_addon.before_compute["vpc-cni"]: Destruction complete after 2s
+module.eks.aws_eks_addon.this["coredns"]: Destroying... [id=devops-crm:coredns]
+module.eks.aws_eks_addon.this["coredns"]: Destruction complete after 2s
+module.eks.module.kms.aws_kms_alias.this["cluster"]: Destroying... [id=alias/eks/devops-crm]
+module.eks.module.kms.aws_kms_alias.this["cluster"]: Destruction complete after 1s
+module.eks.aws_iam_openid_connect_provider.oidc_provider[0]: Destroying... [id=arn:aws:iam::<account-id>:oidc-provider/oidc.eks.ap-south-1.amazonaws.com/id/30E3DEB610CEA0BBD06642B906D53E9E]
+module.eks.aws_iam_openid_connect_provider.oidc_provider[0]: Destruction complete after 0s
+module.eks.aws_eks_access_policy_association.this["cluster_creator_admin"]: Destroying... [id=devops-crm#arn:aws:iam::<account-id>:role/devops-crm-admin#arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy]
+module.eks.aws_eks_access_policy_association.this["cluster_creator_admin"]: Destruction complete after 0s
+module.eks.aws_eks_addon.this["metrics-server"]: Destroying... [id=devops-crm:metrics-server]
+module.eks.aws_eks_addon.this["aws-ebs-csi-driver"]: Destruction complete after 8s
+module.eks.aws_eks_access_policy_association.this["github_deploy_app_namespace"]: Destroying... [id=devops-crm#arn:aws:iam::<account-id>:role/devops-crm-github-deploy#arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminPolicy]
+module.eks.aws_eks_access_policy_association.this["github_deploy_app_namespace"]: Destruction complete after 0s
+module.eks.aws_iam_role_policy_attachment.cluster_encryption[0]: Destroying... [id=devops-crm-cluster-0902772e1d441e3ab126be15d8/arn:aws:iam::<account-id>:policy/devops-crm-cluster-ClusterEncryptione4f2a5bbe599ec7220dee8edf9]
+module.eks.aws_iam_role_policy_attachment.cluster_encryption[0]: Destruction complete after 1s
+module.eks.aws_eks_addon.before_compute["eks-pod-identity-agent"]: Destroying... [id=devops-crm:eks-pod-identity-agent]
+module.eks.aws_eks_addon.before_compute["eks-pod-identity-agent"]: Destruction complete after 0s
+module.eks.aws_eks_addon.this["kube-proxy"]: Destroying... [id=devops-crm:kube-proxy]
+module.eks.aws_eks_addon.this["metrics-server"]: Destruction complete after 4s
+module.eks.aws_eks_access_entry.this["github_deploy"]: Destroying... [id=devops-crm:arn:aws:iam::<account-id>:role/devops-crm-github-deploy]
+module.eks.aws_eks_access_entry.this["github_deploy"]: Destruction complete after 1s
+module.eks.aws_eks_access_entry.this["cluster_creator"]: Destroying... [id=devops-crm:arn:aws:iam::<account-id>:role/devops-crm-admin]
+module.eks.aws_eks_access_entry.this["cluster_creator"]: Destruction complete after 1s
+module.eks.aws_iam_policy.cluster_encryption[0]: Destroying... [id=arn:aws:iam::<account-id>:policy/devops-crm-cluster-ClusterEncryptione4f2a5bbe599ec7220dee8edf9]
+module.eks.aws_eks_addon.this["kube-proxy"]: Destruction complete after 2s
+aws_iam_role.github_deploy: Destroying... [id=devops-crm-github-deploy]
+module.eks.aws_iam_policy.cluster_encryption[0]: Destruction complete after 0s
+module.ebs_csi_pod_identity.aws_iam_role.this[0]: Destroying... [id=devops-crm-ebs-csi-54d4191388e6775100e0f7e59e]
+aws_iam_role.github_deploy: Destruction complete after 1s
+module.eks.module.eks_managed_node_group["default"].module.user_data.null_resource.validate_cluster_service_cidr: Destroying... [id=544150205643155797]
+module.eks.module.eks_managed_node_group["default"].module.user_data.null_resource.validate_cluster_service_cidr: Destruction complete after 0s
+module.eks.module.eks_managed_node_group["default"].aws_eks_node_group.this[0]: Destroying... [id=devops-crm:default-4ae8b054fe668f39eaadff0926]
+module.ebs_csi_pod_identity.aws_iam_role.this[0]: Destruction complete after 1s
+aws_iam_openid_connect_provider.github[0]: Destroying... [id=arn:aws:iam::<account-id>:oidc-provider/token.actions.githubusercontent.com]
+aws_iam_openid_connect_provider.github[0]: Destruction complete after 0s
+module.vpc.aws_nat_gateway.this[0]: Destruction complete after 1m1s
+module.vpc.aws_subnet.public[0]: Destroying... [id=subnet-07f0b1ee87750b2e2]
+module.vpc.aws_eip.nat[0]: Destroying... [id=eipalloc-02c317cf514cea131]
+module.vpc.aws_subnet.public[0]: Destruction complete after 0s
+module.vpc.aws_subnet.public[1]: Destroying... [id=subnet-017091bbd110565ff]
+module.vpc.aws_eip.nat[0]: Destruction complete after 1s
+module.vpc.aws_internet_gateway.this[0]: Destroying... [id=igw-0739196075e2008b3]
+module.vpc.aws_subnet.public[1]: Destruction complete after 1s
+module.vpc.aws_internet_gateway.this[0]: Destruction complete after 0s
+module.eks.module.eks_managed_node_group["default"].aws_eks_node_group.this[0]: Destruction complete after 8m33s
+module.eks.module.eks_managed_node_group["default"].aws_launch_template.this[0]: Destroying... [id=lt-069d125d070ade999]
+module.eks.module.eks_managed_node_group["default"].aws_launch_template.this[0]: Destruction complete after 1s
+module.eks.module.eks_managed_node_group["default"].aws_iam_role_policy_attachment.this["AmazonEKSWorkerNodePolicy"]: Destroying... [id=default-eks-node-group-37206ff09df37b4277052b718b/arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy]
+module.eks.module.eks_managed_node_group["default"].aws_iam_role_policy_attachment.this["AmazonEC2ContainerRegistryReadOnly"]: Destroying... [id=default-eks-node-group-37206ff09df37b4277052b718b/arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly]
+module.eks.time_sleep.this[0]: Destroying... [id=2026-10-16T13:36:20Z]
+module.eks.time_sleep.this[0]: Destruction complete after 0s
+module.eks.module.eks_managed_node_group["default"].aws_iam_role_policy_attachment.this["AmazonEKS_CNI_Policy"]: Destroying... [id=default-eks-node-group-37206ff09df37b4277052b718b/arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy]
+module.eks.module.eks_managed_node_group["default"].aws_iam_role_policy_attachment.this["AmazonEKS_CNI_Policy"]: Destruction complete after 1s
+module.eks.aws_eks_cluster.this[0]: Destroying... [id=devops-crm]
+module.eks.module.eks_managed_node_group["default"].aws_iam_role_policy_attachment.this["AmazonEC2ContainerRegistryReadOnly"]: Destruction complete after 1s
+module.eks.module.eks_managed_node_group["default"].aws_iam_role_policy_attachment.this["AmazonEKSWorkerNodePolicy"]: Destruction complete after 1s
+module.eks.module.eks_managed_node_group["default"].aws_iam_role.this[0]: Destroying... [id=default-eks-node-group-37206ff09df37b4277052b718b]
+module.eks.module.eks_managed_node_group["default"].aws_iam_role.this[0]: Destruction complete after 1s
+module.eks.aws_eks_cluster.this[0]: Destruction complete after 2m7s
+module.eks.aws_security_group_rule.node["ingress_cluster_10251_webhook"]: Destroying... [id=sgrule-2877476761]
+module.eks.aws_security_group_rule.cluster["ingress_nodes_443"]: Destroying... [id=sgrule-1854549884]
+module.eks.aws_security_group_rule.node["ingress_cluster_443"]: Destroying... [id=sgrule-1569862472]
+module.eks.aws_security_group_rule.cluster["ingress_nodes_443"]: Destruction complete after 1s
+module.eks.aws_security_group_rule.node["ingress_cluster_443"]: Destruction complete after 1s
+module.eks.aws_security_group_rule.node["ingress_cluster_6443_webhook"]: Destroying... [id=sgrule-2087747457]
+module.eks.aws_security_group_rule.node["ingress_self_coredns_udp"]: Destroying... [id=sgrule-1968511056]
+module.eks.aws_security_group_rule.node["ingress_cluster_10251_webhook"]: Destruction complete after 1s
+module.eks.aws_security_group_rule.node["ingress_cluster_4443_webhook"]: Destroying... [id=sgrule-3039959063]
+module.eks.aws_security_group_rule.node["ingress_cluster_6443_webhook"]: Destruction complete after 1s
+module.vpc.aws_subnet.private[0]: Destroying... [id=subnet-0f9ea51858cf7f6c1]
+module.vpc.aws_subnet.private[0]: Destruction complete after 0s
+module.eks.aws_security_group_rule.node["ingress_self_coredns_udp"]: Destruction complete after 1s
+module.eks.aws_security_group_rule.node["ingress_cluster_8443_webhook"]: Destroying... [id=sgrule-1865171872]
+module.eks.module.kms.aws_kms_key.this[0]: Destroying... [id=c4e41f0c-b79e-40f8-8f6d-261d4708a3ee]
+module.eks.module.kms.aws_kms_key.this[0]: Destruction complete after 1s
+module.eks.aws_security_group_rule.node["ingress_cluster_9443_webhook"]: Destroying... [id=sgrule-193818731]
+module.eks.aws_security_group_rule.node["ingress_cluster_4443_webhook"]: Destruction complete after 2s
+module.eks.aws_security_group_rule.node["ingress_self_coredns_tcp"]: Destroying... [id=sgrule-3507141567]
+module.eks.aws_security_group_rule.node["ingress_cluster_8443_webhook"]: Destruction complete after 2s
+module.vpc.aws_subnet.private[1]: Destroying... [id=subnet-0c554549a0bbf25fb]
+module.eks.aws_security_group_rule.node["ingress_cluster_9443_webhook"]: Destruction complete after 1s
+module.vpc.aws_subnet.private[1]: Destruction complete after 0s
+module.eks.aws_iam_role_policy_attachment.this["AmazonEKSClusterPolicy"]: Destroying... [id=devops-crm-cluster-0902772e1d441e3ab126be15d8/arn:aws:iam::aws:policy/AmazonEKSClusterPolicy]
+module.eks.aws_cloudwatch_log_group.this[0]: Destroying... [id=/aws/eks/devops-crm/cluster]
+module.eks.aws_cloudwatch_log_group.this[0]: Destruction complete after 1s
+module.eks.aws_security_group_rule.node["ingress_nodes_ephemeral"]: Destroying... [id=sgrule-214408835]
+module.eks.aws_security_group_rule.node["ingress_self_coredns_tcp"]: Destruction complete after 2s
+module.eks.aws_security_group_rule.node["ingress_cluster_kubelet"]: Destroying... [id=sgrule-2680922082]
+module.eks.aws_security_group_rule.node["ingress_nodes_ephemeral"]: Destruction complete after 0s
+module.eks.aws_security_group_rule.node["egress_all"]: Destroying... [id=sgrule-2622432723]
+module.eks.aws_iam_role_policy_attachment.this["AmazonEKSClusterPolicy"]: Destruction complete after 1s
+module.eks.aws_iam_role.this[0]: Destroying... [id=devops-crm-cluster-0902772e1d441e3ab126be15d8]
+module.eks.aws_security_group_rule.node["ingress_cluster_kubelet"]: Destruction complete after 1s
+module.eks.aws_security_group_rule.node["egress_all"]: Destruction complete after 1s
+module.eks.aws_security_group.cluster[0]: Destroying... [id=sg-042126e229c97fe1e]
+module.eks.aws_security_group.node[0]: Destroying... [id=sg-0b59498e18de79775]
+module.eks.aws_iam_role.this[0]: Destruction complete after 1s
+module.eks.aws_security_group.node[0]: Destruction complete after 1s
+module.eks.aws_security_group.cluster[0]: Destruction complete after 1s
+module.vpc.aws_vpc.this[0]: Destroying... [id=vpc-081b7df138eb1faba]
+module.vpc.aws_vpc.this[0]: Destruction complete after 1s
+Destroy complete! Resources: 75 destroyed.
+# Remaining resources tagged Project=devops-crm or created for the cluster
+$ aws eks list-clusters --output text
+$ aws ec2 describe-instances --filters Name=tag:eks:cluster-name,Values=devops-crm Name=instance-state-name,Values=pending,running,stopping,stopped --query Reservations[].Instances[].InstanceId --output text
+$ aws ec2 describe-nat-gateways --filter Name=state,Values=pending,available --query NatGateways[].NatGatewayId --output text
+$ aws elbv2 describe-load-balancers --query LoadBalancers[].LoadBalancerName --output text
+$ aws ec2 describe-volumes --filters Name=tag-key,Values=kubernetes.io/created-for/pvc/name --query Volumes[].VolumeId --output text
+$ aws ec2 describe-addresses --query Addresses[].PublicIp --output text
+$ aws ec2 describe-vpcs --filters Name=tag:Project,Values=devops-crm --query Vpcs[].VpcId --output text
+# Teardown finished 2026-10-21T16:26:35Z. Empty outputs above mean nothing is left.
+# Still to remove by hand when done with the account: IAM user devops-crm-cli, role devops-crm-admin, budget devops-crm-monthly.
